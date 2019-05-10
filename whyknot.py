@@ -1,6 +1,12 @@
 import tkinter as tk
 import tkinter.filedialog as fd
 
+# first we need to create a gui which will hold several components
+# 1. a canvas to draw the knot in 2D
+# 2. convert the drawing to a coordinate array
+# 3. run coordinate array through pyknotid package to generate relevant code
+# 4. save resulting data in csv
+
 root = tk.Tk()
 w = tk.Canvas(root, width=200, height=200)
 w.pack()
