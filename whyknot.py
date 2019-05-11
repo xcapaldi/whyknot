@@ -3,6 +3,10 @@ import tkinter.filedialog as fd
 
 # first we need to create a gui which will hold several components
 # 1. a canvas to draw the knot in 2D
+# - fit into grid with buttons and output
+# - show intersections?
+# - show depth?
+# - ability to modify intersections
 # 2. convert the drawing to a coordinate array
 # noderadius. run coordinate array through pyknotid package to generate relevant code
 # 4. save resulting data in csv
