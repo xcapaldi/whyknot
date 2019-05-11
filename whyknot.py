@@ -4,17 +4,53 @@ import tkinter.filedialog as fd
 # first we need to create a gui which will hold several components
 # 1. a canvas to draw the knot in 2D
 # 2. convert the drawing to a coordinate array
-# 3. run coordinate array through pyknotid package to generate relevant code
+# noderadius. run coordinate array through pyknotid package to generate relevant code
 # 4. save resulting data in csv
 
-root = tk.Tk()
-w = tk.Canvas(root, width=200, height=200)
-w.pack()
-w.create_line(0, 0, 200, 100)
-w.create_line(0, 100, 200, 0, fill="red", dash=(4, 4))
-w.create_rectangle(50, 25, 150, 75, fill="blue")
+# set initial point
+x0, y0 = 0, 0
 
-root.filename = fd.asksaveasfilename(initialdir="/", title="Select File")
-print(root.filename)
+linewidth = 2
+linecolor = "#a3be8c"
+noderadius = 5
+nodecolor = "#bf616a"
+
+
+def drawline(event):
+    x, y = event.x, event.y
+    global x0, y0
+    if x0 == 0 & y0 == 0:
+        d.create_oval(
+            x - noderadius,
+            y - noderadius,
+            x + noderadius,
+            y + noderadius,
+            fill=nodecolor,
+            width=0,
+        )
+    else:
+        d.create_line(x0, y0, x, y, fill=linecolor, width=linewidth)
+        d.create_oval(
+            x - noderadius,
+            y - noderadius,
+            x + noderadius,
+            y + noderadius,
+            fill=nodecolor,
+            width=0,
+        )
+    x0, y0 = x, y
+    return
+
+
+# need to think about levels...
+# https://www.geeksforgeeks.org/given-a-set-of-line-segments-find-if-any-two-segments-intersect/
+
+root = tk.Tk()
+d = tk.Canvas(root, width=800, height=800)
+d.pack()
+
+root.bind("<Button-1>", drawline)
+# root.filename = fd.asksaveasfilename(initialdir="/", title="Select File")
+# print(root.filename)
 
 root.mainloop()
