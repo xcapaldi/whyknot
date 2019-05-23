@@ -25,7 +25,6 @@ line_end_coords = []
 line_m = []
 line_b = []
 intersect_coords = []
-line_tag_list = []
 
 #  Key: intersect coordinates
 #  Value: index number of line being intersected, line intersecting
@@ -49,11 +48,7 @@ def calculate_intersect_coords():
         #  Put in correct order
         if p2 > p1:
             p2,p1 = p1,p2
-
         counter = 0
-        #  Create local intersections list to store multiple intersections
-        #  for current line test
-        local_intersections = []
         for coord_start, coord_end in zip(line_start_coords[:-2],
                                       line_end_coords[:-2]):
             p3 = coord_start[0]
@@ -81,11 +76,8 @@ def calculate_intersect_coords():
                 line_num_top = len(node_coords)-2
                 intersect_node_dict[(x,y)] = line_num_bot, line_num_top
                 intersect_coords.append([x,y])
-                local_intersections.append([x,y])
-        #  Update intersections visually
-        for intersect in local_intersections:
-            x,y = intersect[0],intersect[1]
-            update_intersections(x,y)
+                #  Update intersections visually
+                update_intersections(x,y)
 
 #  Find slope of given line from two points
 def find_slope(p1, p2):
@@ -155,11 +147,9 @@ def perform_analysis():
     
 #  Draw new lines and nodes based on mouse click event
 def drawline(event):
-    global x0, y0, node_counter, line_counter, line_tag_list
+    global x0, y0, node_counter, line_counter
     intersect = False
     x, y = event.x, event.y
-    #  Create local list to store which intersections occur
-    intersections = []
     for coord in intersect_coords:
         #  Create hitbox for over/under intersection switching
         x_low = int(coord[0]-20)
@@ -168,10 +158,8 @@ def drawline(event):
         y_high = int(coord[1]+20)
         if x > x_low and x < x_high and y > y_low and y < y_high:
             intersect = True
-            intersections.append(coord)
-            
-            #  Display results visually
-            #update_intersections(coord[1], coord[0])
+            #  Store which intersection is clicked
+            local_intersect = coord
     if intersect == False:
         #  Generate naming convention for tags
         node_tag = ("node_" + str(node_counter))
@@ -200,7 +188,6 @@ def drawline(event):
                 width=0,
                 tags=node_tag
             )
-            line_tag_list.append(line_tag)
             node_counter += 1
             line_counter += 1
         
@@ -208,10 +195,9 @@ def drawline(event):
         record_line_info(x,y)
         calculate_intersect_coords()
     else:
-        for intersect in intersections:
-            x = intersect[0]
-            y = intersect[1]
-            update_intersections(x,y)
+        x_intersect = local_intersect[0]
+        y_intersect = local_intersect[1]
+        update_intersections(x_intersect,y_intersect)
     all_tags = draw.find_all()
     modify_z_values()
 
@@ -245,7 +231,7 @@ def button_placeholder():
 #  Clear all data and objects on canvas
 def clear_canvas(event):
     global x0, y0, node_coords, line_start_coords, line_end_coords, line_m
-    global line_b, intersect_coords, intersect_node_dict, line_tag_list
+    global line_b, intersect_coords, intersect_node_dict
     global node_counter, line_counter
     draw.delete("all")
     x0, y0 = 0, 0
@@ -257,7 +243,6 @@ def clear_canvas(event):
     intersect_coords.clear()
     intersect_node_dict.clear()
     analysis_results.clear()
-    line_tag_list.clear()
     g_code.config(text="--")
     results.config(text="--")
     clos_var.set(0)
@@ -305,9 +290,8 @@ def include_closure(event):
 ##    except KeyError:
 ##        pass
 
-###  Visually display line crossings
 #  Input is the intersection coords
-def update_intersections(x,y):
+def update_intersections(x,y):  #  function is being passed all the correct intersections, problem with the function itself
     global intersect_stack_dict
     #  Retrieve tag values for intersecting lines
     line_tags = intersect_node_dict.get((x,y))
@@ -316,82 +300,57 @@ def update_intersections(x,y):
     #  Generate corresponding tags
     tag1 = "line_" + str(tag1_num)
     tag2 = "line_" + str(tag2_num)
-    #  Determine if intersection results from line creation or user change
-    tag1_count = line_tag_list.count(tag1)
-    tag2_count = line_tag_list.count(tag2)
-    #  Variable to track if initial crossing or user change
-    initial = True
-    #  Update values in intersect stack dictionary
-    keys = intersect_stack_dict.keys()
-    print(keys)
-    if tag1 in keys and tag2 in keys:
-         #  Retrieve current values (to swap)
-        tag1_position = intersect_stack_dict.get(tag1)
-        tag2_position = intersect_stack_dict.get(tag2)
-        if tag1_position == 1 and tag2_position == -1:
-            intersect_stack_dict[tag1] = -1
-            intersect_stack_dict[tag2] = 1
-        elif tag1_position == -1 and tag2_position == 1:
-            intersect_stack_dict[tag1] = 1
-            intersect_stack_dict[tag2] = -1
-        else:
-            print("problem")
-        initial = False
-        print("user_change")
-    else:
-        #  Add initial values, higher tag number is on top
-        if tag1_num > tag2_num:
-            intersect_stack_dict[tag1] = 1
-            intersect_stack_dict[tag2] = -1
-        else:
-            intersect_stack_dict[tag2] = 1
-            intersect_stack_dict[tag1] = -1
-        print("initial")
-   
-    #  Retrieve updated positions
-    tag1_position = intersect_stack_dict.get(tag1)
-    tag2_position = intersect_stack_dict.get(tag2)
     #  Generate tag for intersect node
     intersect_node_tag = str("node_" + str(x) + "_" + str(y))
-    if initial == True:
-        #  Higher tag number on top
+    #  If initial intersection, create intersection node
+    keys = intersect_stack_dict.keys()
+    if intersect_node_tag not in keys:
+        draw.create_oval(
+            x - 8,
+            y - 8,
+            x + 8,
+            y + 8,
+            fill=background_color,
+            width=0,
+            tags=intersect_node_tag
+        )
+     #  Update dictionary values based on user
         if tag1_num > tag2_num:
-            #  Create oval with background color to cover lines
-            draw.create_oval(
-                x - 8,
-                y - 8,
-                x + 8,
-                y + 8,
-                fill=background_color,
-                width=0,
-                tags=intersect_node_tags
-            )
-            #  Reorder stack to reflect intersections, tag1 on top
-            draw.tag_raise(tag1)
-            #modify_z_value(tag1_num, tag2_num)  
+            #  Key: tag for intersection node, value: tag for first line, tag
+            #  for second line, position of first line, position for second
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, 1, -1]
         else:
-            #  tag2 on top
-            draw.create_oval(
-                x - 8,
-                y - 8,
-                x + 8,
-                y + 8,
-                fill=background_color,
-                width=0,
-                tags=intersect_node_tag
-            )
-            draw.tag_raise(tag2)
-            #modify_z_values(tag2_num, tag1_num)
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, -1, 1]
     else:
-        #  User change (by clicking on intersect)
-        if tag1_position == 1 and tag2_position == -1:
-            draw.tag_raise(intersect_node_tag)
-            draw.tag_raise(tag1)
-        elif tag1_position == -1 and tag2_position == 1:
-            draw.tag_raise(intersect_node_tag)
-            draw.tag_raise(tag2)
+        intersect_values = intersect_stack_dict.get(intersect_node_tag)
+        if intersect_values[2] == 1:
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, -1, 1]
         else:
-            print("problem")
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, 1, -1]
+
+    #  Breakout lines based on position
+    keys = intersect_stack_dict.keys()
+    above = []
+    below = []
+    for key in keys:
+        key_value = intersect_stack_dict.get(key)
+        if key_value[2] == 1:
+            above_line = key_value[0]
+            below_line = key_value[1]
+            above.append(above_line)
+            below.append(below_line)
+        else:
+            above_line = key_value[1]
+            below_line = key_value[0]
+            above.append(above_line)
+            below.append(below_line)
+    #  Update positions visually
+    for line in below:
+        draw.tag_raise(line)
+    for node in keys:
+        draw.tag_raise(node)
+    for line in above:
+        draw.tag_raise(line)
 
 
 #  Obtain tags from intersect coordinates and modify z-values of node
