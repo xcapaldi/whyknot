@@ -1,3 +1,4 @@
+#  WhyKnot
 #  Graphical wrapper for PyKnotID package
 
 import tkinter as tk
@@ -15,6 +16,7 @@ linewidth = 2
 linecolor = "#a3be8c"
 noderadius = 5
 nodecolor = "#bf616a"
+background_color = "#d9d9d9"
 
 #  Create lists to store variables
 node_coords = []
@@ -23,7 +25,6 @@ line_end_coords = []
 line_m = []
 line_b = []
 intersect_coords = []
-line_tag_list = []
 
 #  Key: intersect coordinates
 #  Value: index number of line being intersected, line intersecting
@@ -31,6 +32,8 @@ intersect_node_dict = {}
 analysis_results = []  #  Order of items in results: Crossing number,
                        #  Determinant|Δ(-1)|, |Δ(exp(2πi/3)|, |Δ(i)|,
                        #  Vassiliev order 2 (v2), Vassiliev order 3 (v3)
+
+intersect_stack_dict = {}  #  Stores which line is on top/bottom
 
 node_counter = 0
 line_counter = 0
@@ -45,11 +48,7 @@ def calculate_intersect_coords():
         #  Put in correct order
         if p2 > p1:
             p2,p1 = p1,p2
-
         counter = 0
-        #  Create local intersections list to store multiple intersections
-        #  for current line test
-        local_intersections = []
         for coord_start, coord_end in zip(line_start_coords[:-2],
                                       line_end_coords[:-2]):
             p3 = coord_start[0]
@@ -77,11 +76,8 @@ def calculate_intersect_coords():
                 line_num_top = len(node_coords)-2
                 intersect_node_dict[(x,y)] = line_num_bot, line_num_top
                 intersect_coords.append([x,y])
-                local_intersections.append([x,y])
-        #  Update intersections visually
-        for intersect in local_intersections:
-            x,y = intersect[0],intersect[1]
-            #update_intersections(x,y)
+                #  Update intersections visually
+                update_intersections(x,y)
 
 #  Find slope of given line from two points
 def find_slope(p1, p2):
@@ -108,11 +104,13 @@ def record_line_info(x,y):
         coords_1 = node_coords[-1][0:2]
         x1,y1 = coords_1[1],coords_1[0]
         coords_ordered_1 = [x1,y1]
+        line_end_coords.append(coords_ordered_1)
+
         coords_2 = node_coords[-2][0:2]
         x2,y2 = coords_2[1], coords_2[0]
         coords_ordered_2 = [x2,y2]
         line_start_coords.append(coords_ordered_2)
-        line_end_coords.append(coords_ordered_1)
+        
         line_m_value = find_slope(line_start_coords[-1], line_end_coords[-1])
         line_m.append(line_m_value)
         line_b_value = find_y_intercept(line_start_coords[-1], line_m[-1])
@@ -149,12 +147,10 @@ def perform_analysis():
     
 #  Draw new lines and nodes based on mouse click event
 def drawline(event):
-    global x0, y0, node_counter, line_counter, line_tag_list
+    global x0, y0, node_counter, line_counter
     intersect = False
     x, y = event.x, event.y
-    #  Create nodes and lines, assign tags
     for coord in intersect_coords:
-        #  For some reason, intersect coords are in format (y,x)
         #  Create hitbox for over/under intersection switching
         x_low = int(coord[0]-20)
         x_high = int(coord[0]+20)
@@ -162,8 +158,8 @@ def drawline(event):
         y_high = int(coord[1]+20)
         if x > x_low and x < x_high and y > y_low and y < y_high:
             intersect = True
-            #  Display results visually
-            #update_intersections(coord[1], coord[0])
+            #  Store which intersection is clicked
+            local_intersect = coord
     if intersect == False:
         #  Generate naming convention for tags
         node_tag = ("node_" + str(node_counter))
@@ -194,14 +190,14 @@ def drawline(event):
             )
             node_counter += 1
             line_counter += 1
-            line_tag_list.append(line_tag)
         
         x0, y0 = x, y
         record_line_info(x,y)
         calculate_intersect_coords()
     else:
-        pass
-        #update_intersections(x,y)
+        x_intersect = local_intersect[0]
+        y_intersect = local_intersect[1]
+        update_intersections(x_intersect,y_intersect)
     all_tags = draw.find_all()
     modify_z_values()
 
@@ -236,6 +232,7 @@ def button_placeholder():
 def clear_canvas(event):
     global x0, y0, node_coords, line_start_coords, line_end_coords, line_m
     global line_b, intersect_coords, intersect_node_dict
+    global node_counter, line_counter
     draw.delete("all")
     x0, y0 = 0, 0
     node_coords.clear()
@@ -246,10 +243,12 @@ def clear_canvas(event):
     intersect_coords.clear()
     intersect_node_dict.clear()
     analysis_results.clear()
-    line_tag_list.clear()
     g_code.config(text="--")
     results.config(text="--")
     clos_var.set(0)
+    node_counter = 0
+    line_counter = 0
+    intersect_stack_dict.clear()
 
 #  Visually add or remove the closure line segment
 def include_closure(event):
@@ -291,9 +290,9 @@ def include_closure(event):
 ##    except KeyError:
 ##        pass
 
-###  Visually display line crossings
 #  Input is the intersection coords
-def update_intersections(x,y):
+def update_intersections(x,y):  #  function is being passed all the correct intersections, problem with the function itself
+    global intersect_stack_dict
     #  Retrieve tag values for intersecting lines
     line_tags = intersect_node_dict.get((x,y))
     tag1_num = line_tags[0]
@@ -301,102 +300,58 @@ def update_intersections(x,y):
     #  Generate corresponding tags
     tag1 = "line_" + str(tag1_num)
     tag2 = "line_" + str(tag2_num)
-    #  Determine if intersection results from line creation or user change
-    tag1_count = line_tag_list.count(tag1)
-    tag2_count = line_tag_list.count(tag2)
-    if tag1_count == 1 and tag2_count == 1:
-        #  Initial intersection, tag with higher number is on top
+    #  Generate tag for intersect node
+    intersect_node_tag = str("node_" + str(x) + "_" + str(y))
+    #  If initial intersection, create intersection node
+    keys = intersect_stack_dict.keys()
+    if intersect_node_tag not in keys:
+        draw.create_oval(
+            x - 8,
+            y - 8,
+            x + 8,
+            y + 8,
+            fill=background_color,
+            width=0,
+            tags=intersect_node_tag
+        )
+     #  Update dictionary values based on user
         if tag1_num > tag2_num:
-            bot_tag = tag2
-            bot_tag_num = tag2_num
-            #  Delete current bottom line
-            draw.delete(bot_tag)
-            #  Determine new start/end points for split line
-            start_coords = line_start_coords[bot_tag_num]
-            end_coords = line_end_coords[bot_tag_num]
-            m = line_m[bot_tag_num]
-            b = line_b[bot_tag_num]
-            split_point = [x,y]
-            x_lower = split_point[0]-5
-            x_upper = split_point[0]+5
-            #  y = mx + b
-            y_lower = (m*x_lower)+b
-            y_upper = (m*x_upper)+b
-            #  Gather coords
-            p_lower = [x_lower, y_lower]
-            p_upper = [x_upper, y_upper]
-            #  Create two new lines with hole at intersection
-            draw.create_line(start_coords[0], start_coords[1], p_lower[0], p_lower[1],
-                             fill=linecolor, width=linewidth, tags=tag2)
-            draw.create_line(p_upper[0], p_upper[1], end_coords[0], end_coords[1],
-                             fill=linecolor, width=linewidth, tags=tag2)
-            #modify_z_value(tag1_num, tag2_num)  
+            #  Key: tag for intersection node, value: tag for first line, tag
+            #  for second line, position of first line, position for second
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, 1, -1]
         else:
-            bot_tag = tag1
-            bot_tag_num = tag1_num
-            #  Delete current bottom line
-            draw.delete(bot_tag)
-            #  Determine new start/endpoints for split line
-            start_coords = line_start_coords[bot_tag_num]
-            end_coords = line_end_coords[bot_tag_num]
-            m = line_m[bot_tag_num]
-            b = line_b[bot_tag_num]
-            split_point = [x,y]
-            x_lower = split_point[0]-5
-            x_upper = split_point[0]+5
-            #  y = mx + b
-            y_lower = (m*x_lower)+b
-            y_upper = (m*x_upper)+b
-            #  Gather coords
-            p_lower = [x_lower, y_lower]
-            p_upper = [x_upper, y_upper]
-            #  Create two new lines with hole at intersection
-            draw.create_line(start_coords[0], start_coords[1], p_lower[0], p_lower[1],
-                             fill=linecolor, width=linewidth, tags=tag2)
-            draw.create_line(p_upper[0], p_upper[1], end_coords[0], end_coords[1],
-                             fill=linecolor, width=linewidth, tags=tag2)
-            #modify_z_values(tag2_num, tag1_num)
-    
-##    elif len(tag1_item_list) == 2 or len(tag2_item_list) == 2:
-##        #  User changed intersection
-##        #  Delete all associated items
-##        draw.delete("tag1")
-##        draw.delete("tag2")
-##        #  Determine which line was on top
-##        if len(tag1_item_list) == 2:
-##            #  Determine endpoints of lines
-##            start_coords_top = line_start_coords[tag1_num]
-##            end_coords_top = line_end_coords[tag1_num]
-##            start_coords_bot = line_start_coords[tag2_num]
-##            end_coords_bot = line_end_coords[tag2_num]
-##            #  Create continuous top line
-##            draw.create_line(start_coords_top[0], start_coords_top[1],
-##                             end_coords_top[0], end_coords_top[1],
-##                             fill='blue', width=linewidth, tags=tag1)
-##            #  Create two new lines with hole at intersection
-##            draw.create_line(start_coords_bot[0], start_coords_bot[1], x-5, y-5,
-##                             fill='blue', width=linewidth, tags=tag2)
-##        
-##            draw.create_line(x+5, y+5, end_coords_bot[0], end_coords_bot[1],
-##                             fill=linecolor, width=linewidth, tags=tag2)
-##            modify_z_values(tag1_num, tag2_num)
-##        elif len(tag2_item_list) == 2:
-##            #  Determine endpoints of lines
-##            start_coords_top = line_start_coords[tag2_num]
-##            end_coords_top = line_end_coords[tag2_num]
-##            start_coords_bot = line_start_coords[tag1_num]
-##            end_coords_bot = line_end_coords[tag1_num]
-##            #  Create continuous top line
-##            draw.create_line(start_coords_top[0], start_coords_top[1],
-##                             end_coords_top[0], end_coords_top[1],
-##                             fill='blue', width=linewidth, tags=tag2)
-##            #  Create two new lines with hole at intersection
-##            draw.create_line(start_coords_bot[0], start_coords_bot[1], x-5, y-5,
-##                             fill='blue', width=linewidth, tags=tag1)
-##        
-##            draw.create_line(x+5, y+5, end_coords_bot[0], end_coords_bot[1],
-##                             fill='blue', width=linewidth, tags=tag1)
-##            modify_z_values(tag2_num, tag1_num)
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, -1, 1]
+    else:
+        intersect_values = intersect_stack_dict.get(intersect_node_tag)
+        if intersect_values[2] == 1:
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, -1, 1]
+        else:
+            intersect_stack_dict[intersect_node_tag] = [tag1, tag2, 1, -1]
+
+    #  Breakout lines based on position
+    keys = intersect_stack_dict.keys()
+    above = []
+    below = []
+    for key in keys:
+        key_value = intersect_stack_dict.get(key)
+        if key_value[2] == 1:
+            above_line = key_value[0]
+            below_line = key_value[1]
+            above.append(above_line)
+            below.append(below_line)
+        else:
+            above_line = key_value[1]
+            below_line = key_value[0]
+            above.append(above_line)
+            below.append(below_line)
+    #  Update positions visually
+    for line in below:
+        draw.tag_raise(line)
+    for node in keys:
+        draw.tag_raise(node)
+    for line in above:
+        draw.tag_raise(line)
+
 
 #  Obtain tags from intersect coordinates and modify z-values of node
 #  coordinate array accordingly
@@ -476,4 +431,5 @@ analyze.bind("<Button-1>", find_gc)
 closures.bind("<Button-1>", include_closure)
 draw.bind('<Motion>', display_coords_realtime)
 root.mainloop()
+
 
