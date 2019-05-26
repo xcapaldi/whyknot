@@ -11,6 +11,8 @@ from sympy import Symbol, exp, I, pi
 # set initial point
 x0, y0 = 0, 0
 
+gc_str = ""
+
 #  Set line/node defaults
 linewidth = 2
 linecolor = "#a3be8c"
@@ -217,6 +219,7 @@ def drawline(event):
 
 #  Calculate gauss code and update label
 def find_gc(event):
+    global gc_str
     if len(node_coords) > 1:
         #  Convert to array
         node_coords_array = np.asarray(node_coords)
@@ -402,6 +405,12 @@ def close_window():
     window.destroy()
 
 
+# clear clipboard and copy the currently displayed gauss code
+def copy_gauss(event):
+    root.clipboard_clear()
+    root.clipboard_append(gc_str)
+
+
 #  Create GUI
 root = tk.Tk()
 root.title("WhyKnot")
@@ -461,10 +470,8 @@ close.bind("<Button-1>", lambda e: root.destroy())
 root.bind("q", lambda e: root.destroy())
 closures.bind("<Button-1>", include_closures)
 draw.bind("<Motion>", display_coords_realtime)
+root.bind("y", copy_gauss)
 # save.bind("<Button-1>", write_data)
 # root.bind("w", write_data)
-
-# I want this to copy the gauss code to the clipboard
-root.bind("y", lambda: root.clipboard_clear(), root.clipboard_append("gauss code"))
 
 root.mainloop()
