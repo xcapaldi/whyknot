@@ -1,5 +1,7 @@
 #  WhyKnot
 #  Graphical wrapper for PyKnotID package
+#  Xavier and Luc Capaldi
+
 
 import tkinter as tk
 import tkinter.filedialog as fd
