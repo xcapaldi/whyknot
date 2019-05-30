@@ -9,6 +9,8 @@ import numpy as np
 import pyknotid
 import pyknotid.spacecurves as pkidsc
 from sympy import Symbol, exp, I, pi
+from sympy import Point, Line
+
 
 # set initial point
 x0, y0 = 0, 0
@@ -41,6 +43,12 @@ intersect_stack_dict = {}  #  Stores which line is on top/bottom
 
 node_counter = 0
 line_counter = 0
+#  Placeholder tag values
+line1_tag = "tag1_0_0"
+line2_tag = "tag2_0_0"
+tag_dict = {}  #  Stores tag for line segments
+intersect_crossroads = {}  #  Positions for crossroad lines
+crossroad_start_end = {}   #  Current start/end coordinates for crossroads
 
 #  Find all intersects for current (newest) line segment
 def calculate_intersect_coords():
@@ -89,8 +97,8 @@ def find_slope(p1, p2):
     try:
         slope = (p2[1] - p1[1]) / (p2[0] - p1[0])
     except ZeroDivisionError:
-        #  Prevent zero division
         slope = 0.000001
+        print("undefined")
     return slope
 
 
@@ -267,11 +275,14 @@ def clear_canvas(event):
     intersect_node_dict.clear()
     analysis_results.clear()
     g_code.config(text="--")
-    results.config(text="--")
     clos_var.set(0)
     node_counter = 0
     line_counter = 0
     intersect_stack_dict.clear()
+    tag_dict.clear()
+    intersect_crossroads.clear()
+    crossroad_start_end.clear()
+
 
 
 #  Visually add or remove the closure line segment
@@ -286,7 +297,6 @@ def include_closures(event):
             )
         else:
             draw.delete("closure")
-
 
 ###  Crossing number not calculating properly
 ###  Find number of total intersections
@@ -431,7 +441,7 @@ draw_frame.grid(column=0, sticky="nsw")
 interface_frame.grid(column=1, sticky="nse")
 
 #  Create canvas widget for draw frame
-draw = tk.Canvas(draw_frame, width=800, height=800)
+draw = tk.Canvas(draw_frame, width=600, height=800)
 
 #  Place widget in draw frame
 draw.grid(row=0, column=0)
