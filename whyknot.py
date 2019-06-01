@@ -356,6 +356,10 @@ def create_intersections(x, y):
     line2_tag = str("line2_" + str(x) + "_" + str(y))
     tag_dict[tag1] = line1_tag
     tag_dict[tag2] = line2_tag
+
+    #  Bounds for slope (to identify when to rotate line 90 degrees)
+    m_lower_bound = -5
+    m_upper_bound = 5
     
     #  Find all start and endpoints for line segments along line1
     line1_segment_coords = []
@@ -366,30 +370,42 @@ def create_intersections(x, y):
     for intersect1, intersect2 in zip(line1_coords[0:], line1_coords[1:]):
         #  Initial line segment
         if position1 == 0:
-            intersect1_x = round(intersect1[0], 2)
-            intersect1_y = round(intersect1[1], 2)
-            line1_segment_coords.append([intersect1_x, intersect1_y])
-            x_lower = round(intersect2[0]-6, 2)
-            y_lower = round((line1_m*x_lower)+line1_b, 2)
-            segment_coords = [x_lower, y_lower]
-            line1_segment_coords.append(segment_coords)
+            line1_segment_coords.append([intersect1[0], intersect1[1]])
+            if line1_m < m_lower_bound or line1_m > m_upper_bound:
+                y_lower = intersect2[1]+6
+                x_lower = (y_lower - line1_b) / line1_m
+            else:
+                x_lower = intersect2[0]-6
+                y_lower = (line1_m*x_lower)+line1_b
+            line1_segment_coords.append([x_lower, y_lower])
+
+        #  Final line segment     
         elif position1 == len(line1_coords)-2:
-            #  Final line segment
-            x_upper = round(intersect1[0]+6, 2)
-            y_upper = round((line1_m*x_upper)+line1_b, 2)
-            segment_coords = [x_upper, y_upper]
-            line1_segment_coords.append(segment_coords)
+            if line1_m < m_lower_bound or line1_m > m_upper_bound:
+                y_upper = intersect1[1]-6
+                x_upper = (y_upper - line1_b) / line1_m
+            else:
+                x_upper = intersect1[0]+6
+                y_upper = (line1_m*x_upper)+line1_b
+            line1_segment_coords.append([x_upper, y_upper])
             line1_segment_coords.append(intersect2)
-        else:  #  All intermediary line segments
-            x_upper = round(intersect1[0]+6, 2)
-            y_upper = round((line1_m*x_upper)+line1_b, 2)
-            segment_coords_upper = [x_upper, y_upper]
-            x_lower = round(intersect2[0]-6, 2)
-            y_lower = round((line1_m*x_lower)+line1_b, 2)
-            segment_coords_lower = [x_lower, y_lower]
-            line1_segment_coords.append(segment_coords_upper)
-            line1_segment_coords.append(segment_coords_lower)
+            
+        #  All intermediary line segments
+        else:
+            if line1_m < m_lower_bound or line1_m > m_upper_bound:
+                y_upper = intersect1[1]-6
+                x_upper = (y_upper - line1_b) / line1_m
+                y_lower = intersect2[1]+6
+                x_lower = (y_lower - line1_b) / line1_m
+            else:
+                x_upper = intersect1[0]+6
+                y_upper = (line1_m*x_upper)+line1_b
+                x_lower = intersect2[0]-6
+                y_lower = (line1_m*x_lower)+line1_b
+            line1_segment_coords.append([x_upper, y_upper])
+            line1_segment_coords.append([x_lower, y_lower])
         position1 +=1
+
 
     #  Find all start and endpoints for line segments along line2
     line2_segment_coords = []
@@ -397,33 +413,55 @@ def create_intersections(x, y):
     line2_m = line_m[tag2_num]
     line2_b = line_b[tag2_num]
     for intersect1, intersect2 in zip(line2_coords[0:], line2_coords[1:]):
+        #  Initial line segment
         if position2 == 0:
-            #  Initial line segment
-            intersect1_x = round(intersect1[0], 2)
-            intersect1_y = round(intersect1[1], 2)
-            line2_segment_coords.append([intersect1_x, intersect1_y])
-            x_lower = round(intersect2[0]-6, 2)
-            y_lower = round((line2_m*x_lower)+line2_b, 2)
-            segment_coords = [x_lower, y_lower]
-            line2_segment_coords.append(segment_coords)
+            line2_segment_coords.append([intersect1[0], intersect1[1]])
+            if line2_m < m_lower_bound or line2_m > m_upper_bound:
+                y_lower = intersect2[1]+6
+                x_lower = (y_lower - line2_b) / line2_m
+            else:
+                x_lower = intersect2[0]-6
+                y_lower = (line2_m*x_lower)+line2_b
+            line2_segment_coords.append([x_lower, y_lower])
+            
+        #  Final line segment
         elif position2 == len(line2_coords)-2:
-            #  Final line segment
-            x_upper = round(intersect1[0]+6, 2)
-            y_upper = round((line2_m*x_upper)+line2_b, 2)
+            if line2_m < m_lower_bound or line2_m > m_upper_bound:
+                y_upper = intersect1[1]-6
+                x_upper = (y_upper - line2_b) / line2_m
+            else:
+                x_upper = intersect1[0]+6
+                y_upper = (line2_m*x_upper)+line2_b
             segment_coords = [x_upper, y_upper]
-            line2_segment_coords.append(segment_coords)
-            line2_segment_coords.append(intersect2)
-        else:  #  All intermediary line segments
-            x_upper = round(intersect1[0]+6, 2)
-            y_upper = round((line2_m*x_upper)+line2_b, 2)
-            segment_coords_upper = [x_upper, y_upper]
-            x_lower = round(intersect2[0]-6, 2)
-            y_lower = round((line2_m*x_lower)+line2_b, 2)
-            segment_coords_lower = [x_lower, y_lower]
-            line2_segment_coords.append(segment_coords_upper)
-            line2_segment_coords.append(segment_coords_lower)
+            line2_segment_coords.append([x_upper, y_upper])
+            line2_segment_coords.append([intersect2[0], intersect2[1]])
+
+        #  All intermediary line segments 
+        else:
+            if line2_m < m_lower_bound or line2_m > m_upper_bound:
+                y_upper = intersect1[1]-6
+                x_upper = (y_upper - line2_b) / line2_m
+                y_lower  = intersect2[1]+6
+                x_lower = (y_lower - line2_b) / line2_m
+            else:
+                x_upper = intersect1[0]+6
+                y_upper = (line2_m*x_upper)+line2_b
+                x_lower = intersect2[0]-6
+                y_lower = (line2_m*x_lower)+line2_b
+            line2_segment_coords.append([x_upper, y_upper])
+            line2_segment_coords.append([x_lower, y_lower])
         position2 +=1
 
+    #  Reverse coord lists when necessary for rotatated lines
+    if line1_m < m_lower_bound or line1_m > m_upper_bound:
+        if line1_m > 0:
+            line1_segment_coords = line1_segment_coords[::-1]
+    if line2_m < m_lower_bound or line2_m > m_upper_bound:
+        if line2_m > 0:
+            line2_segment_coords = line2_segment_coords[::-1]
+
+
+    
     #  Create all new line segments
     for start, end in zip(line1_segment_coords[0::2], line1_segment_coords[1::2]):
         draw.create_line(start[0], start[1], end[0], end[1],
@@ -435,29 +473,46 @@ def create_intersections(x, y):
     #  Generate tag for intersect crossroads
     crossroad_tag = str("crossroad_" + str(x) + "_" + str(y))
     
-    #  Find crossroad coords for line1 and line2
-    crossroad_x_upper = x+6
-    crossroad_x_lower = x-6
-    crossroad1_y_upper = (line1_m*crossroad_x_upper)+line1_b
-    crossroad1_y_lower = (line1_m*crossroad_x_lower)+line1_b
-    crossroad2_y_upper = (line2_m*crossroad_x_upper)+line2_b
-    crossroad2_y_lower = (line2_m*crossroad_x_lower)+line2_b
-
+    #  Find crossroad coords
+    #  Line 1
+    if line1_m < m_lower_bound or line1_m > m_upper_bound:
+        crossroad1_y_upper = y-6
+        crossroad1_y_lower = y+6
+        crossroad1_x_upper = (crossroad1_y_upper - line1_b) / line1_m
+        crossroad1_x_lower = (crossroad1_y_lower - line1_b) / line1_m   
+    else:
+        crossroad1_x_upper = x+6
+        crossroad1_x_lower = x-6
+        crossroad1_y_upper = (line1_m*crossroad1_x_upper)+line1_b
+        crossroad1_y_lower = (line1_m*crossroad1_x_lower)+line1_b
+    #  Line 2
+    if line2_m < m_lower_bound or line2_m > m_upper_bound:
+        crossroad2_y_upper = y-6
+        crossroad2_y_lower = y+6
+        crossroad2_x_upper = (crossroad2_y_upper - line2_b) / line2_m
+        crossroad2_x_lower = (crossroad2_y_lower - line2_b) / line2_m
+    else:
+        crossroad2_x_upper = x+6
+        crossroad2_x_lower = x-6
+        crossroad2_y_upper = (line2_m*crossroad2_x_upper)+line2_b
+        crossroad2_y_lower = (line2_m*crossroad2_x_lower)+line2_b 
+        
     #  Add crossroad coords to dictionary, lower line then upper line
-    intersect_crossroads[crossroad_tag] = [[crossroad_x_upper,crossroad1_y_upper,
-                                            crossroad_x_lower,crossroad1_y_lower],
-                                           [crossroad_x_upper,crossroad2_y_upper,
-                                            crossroad_x_lower,crossroad2_y_lower]]
+    intersect_crossroads[crossroad_tag] = [[crossroad1_x_upper,crossroad1_y_upper,
+                                            crossroad1_x_lower,crossroad1_y_lower],
+                                           
+                                           [crossroad2_x_upper,crossroad2_y_upper,
+                                            crossroad2_x_lower,crossroad2_y_lower]]
 
     #  Draw initial crossroad line
-    draw.create_line(crossroad_x_upper, crossroad2_y_upper,
-                     crossroad_x_lower, crossroad2_y_lower,
+    draw.create_line(crossroad2_x_upper, crossroad2_y_upper,
+                     crossroad2_x_lower, crossroad2_y_lower,
                          fill=linecolor, width=linewidth, tags = crossroad_tag)
 
     #  Record current start/end coordinates for crossroad line
-    crossroad_start_end[crossroad_tag] = [crossroad_x_upper,
+    crossroad_start_end[crossroad_tag] = [crossroad2_x_upper,
                                           crossroad2_y_upper,
-                                          crossroad_x_lower,
+                                          crossroad2_x_lower,
                                           crossroad2_y_lower]
 
 #  Update currently existing crossroads and modify z-value
