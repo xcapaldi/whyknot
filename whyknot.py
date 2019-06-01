@@ -366,13 +366,15 @@ def create_intersections(x, y):
     position1 = 0
     line1_m = line_m[tag1_num]
     line1_b = line_b[tag1_num]
-    #print(line1_coords)
     for intersect1, intersect2 in zip(line1_coords[0:], line1_coords[1:]):
         #  Initial line segment
         if position1 == 0:
             line1_segment_coords.append([intersect1[0], intersect1[1]])
             if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                y_lower = intersect2[1]+6
+                if line1_m > 0:
+                    y_lower = intersect2[1]-6
+                else:
+                    y_lower = intersect2[1]+6
                 x_lower = (y_lower - line1_b) / line1_m
             else:
                 x_lower = intersect2[0]-6
@@ -382,7 +384,10 @@ def create_intersections(x, y):
         #  Final line segment     
         elif position1 == len(line1_coords)-2:
             if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                y_upper = intersect1[1]-6
+                if line1_m > 0:
+                    y_upper = intersect1[1]+6
+                else:
+                    y_upper = intersect1[1]-6
                 x_upper = (y_upper - line1_b) / line1_m
             else:
                 x_upper = intersect1[0]+6
@@ -393,9 +398,13 @@ def create_intersections(x, y):
         #  All intermediary line segments
         else:
             if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                y_upper = intersect1[1]-6
+                if line1_m > 0:
+                    y_upper = intersect1[1]+6
+                    y_lower = intersect2[1]-6
+                else:
+                    y_upper = intersect1[1]-6
+                    y_lower = intersect2[1]+6
                 x_upper = (y_upper - line1_b) / line1_m
-                y_lower = intersect2[1]+6
                 x_lower = (y_lower - line1_b) / line1_m
             else:
                 x_upper = intersect1[0]+6
@@ -405,8 +414,7 @@ def create_intersections(x, y):
             line1_segment_coords.append([x_upper, y_upper])
             line1_segment_coords.append([x_lower, y_lower])
         position1 +=1
-
-
+        
     #  Find all start and endpoints for line segments along line2
     line2_segment_coords = []
     position2 = 0
@@ -417,7 +425,10 @@ def create_intersections(x, y):
         if position2 == 0:
             line2_segment_coords.append([intersect1[0], intersect1[1]])
             if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                y_lower = intersect2[1]+6
+                if line2_m > 0:
+                    y_lower = intersect2[1]-6
+                else:
+                    y_lower = intersect2[1]+6
                 x_lower = (y_lower - line2_b) / line2_m
             else:
                 x_lower = intersect2[0]-6
@@ -427,7 +438,10 @@ def create_intersections(x, y):
         #  Final line segment
         elif position2 == len(line2_coords)-2:
             if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                y_upper = intersect1[1]-6
+                if line2_m > 0:
+                    y_upper = intersect1[1]+6
+                else:
+                    y_upper = intersect1[1]-6
                 x_upper = (y_upper - line2_b) / line2_m
             else:
                 x_upper = intersect1[0]+6
@@ -439,9 +453,13 @@ def create_intersections(x, y):
         #  All intermediary line segments 
         else:
             if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                y_upper = intersect1[1]-6
+                if line2_m > 0:
+                    y_upper = intersect1[1]+6
+                    y_lower = intersect2[1]-6
+                else:
+                    y_upper = intersect1[1]-6
+                    y_lower = intersect2[1]+6
                 x_upper = (y_upper - line2_b) / line2_m
-                y_lower  = intersect2[1]+6
                 x_lower = (y_lower - line2_b) / line2_m
             else:
                 x_upper = intersect1[0]+6
@@ -451,17 +469,7 @@ def create_intersections(x, y):
             line2_segment_coords.append([x_upper, y_upper])
             line2_segment_coords.append([x_lower, y_lower])
         position2 +=1
-
-    #  Reverse coord lists when necessary for rotatated lines
-    if line1_m < m_lower_bound or line1_m > m_upper_bound:
-        if line1_m > 0:
-            line1_segment_coords = line1_segment_coords[::-1]
-    if line2_m < m_lower_bound or line2_m > m_upper_bound:
-        if line2_m > 0:
-            line2_segment_coords = line2_segment_coords[::-1]
-
-
-    
+   
     #  Create all new line segments
     for start, end in zip(line1_segment_coords[0::2], line1_segment_coords[1::2]):
         draw.create_line(start[0], start[1], end[0], end[1],
@@ -476,8 +484,12 @@ def create_intersections(x, y):
     #  Find crossroad coords
     #  Line 1
     if line1_m < m_lower_bound or line1_m > m_upper_bound:
-        crossroad1_y_upper = y-6
-        crossroad1_y_lower = y+6
+        if line1_m > 0:
+            crossroad1_y_upper = y+6
+            crossroad1_y_lower = y-6
+        else:
+            crossroad1_y_upper = y-6
+            crossroad1_y_lower = y+6
         crossroad1_x_upper = (crossroad1_y_upper - line1_b) / line1_m
         crossroad1_x_lower = (crossroad1_y_lower - line1_b) / line1_m   
     else:
@@ -487,8 +499,12 @@ def create_intersections(x, y):
         crossroad1_y_lower = (line1_m*crossroad1_x_lower)+line1_b
     #  Line 2
     if line2_m < m_lower_bound or line2_m > m_upper_bound:
-        crossroad2_y_upper = y-6
-        crossroad2_y_lower = y+6
+        if line2_m > 0:
+            crossroad2_y_upper = y+6
+            crossroad2_y_lower = y-6
+        else:
+            crossroad2_y_upper = y-6
+            crossroad2_y_lower = y+6 
         crossroad2_x_upper = (crossroad2_y_upper - line2_b) / line2_m
         crossroad2_x_lower = (crossroad2_y_lower - line2_b) / line2_m
     else:
