@@ -10,7 +10,7 @@ import pyknotid
 import pyknotid.spacecurves as pkidsc
 #from pyknotid.representations import GaussCode, Representation
 from sympy import Symbol, exp, I, pi
-
+import csv
 
 # set initial point
 x0, y0 = 0, 0
@@ -594,16 +594,39 @@ def copy_gauss(event):
     root.clipboard_clear()
     root.clipboard_append(gc_str)
 
+
 # open file to save data
 def open_file(event):
+    global numknots
+    numknots = 0
     root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
-    print(root.filename)
+    filename.config(text=root.filename.split("/")[-1])
+    # update numknots NEEDS TESTING
+    with  open(root.filename, newline='') as csvfile:
+        knotentries = csv.reader(csvfile, delimiter = ' ', quotechar="|")
+        for row in knotentries:
+            numknots+=1
+    entries.config(text=str(numknots)+" entries")
 
 # new file to save data to
 def new_file(event):
+    global numknots
+    # ask for new filename and location
     root.filename = fd.asksaveasfilename(initialdir = "/", title = "New file",
     defaultextension=".csv")
-    print(root.filename)
+    # make file
+    with open(root.filename,'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["gauss","crossingnum","alexander"])
+    # update filename
+    filename.config(text=root.filename.split("/")[-1])
+    # set number of knots to 0
+    numknots = 0
+
+def write_data(event):
+    global numknots
+    numknots=numknots+1
+    entries.config(text=str(numknots)+" entries")
 
 #  Create GUI
 root = tk.Tk()
@@ -645,17 +668,21 @@ save = tk.Button(interface_frame, text="Save (w)")
 close = tk.Button(interface_frame, text="Quit (q)")
 clear = tk.Button(interface_frame, text="Clear (c)")
 coords_realtime = tk.Label(interface_frame, text="--")
+filename = tk.Label(interface_frame, text="no file", font=("Helvetica",10))
+entries = tk.Label(interface_frame, text="0 entries", font=("Helvetica",10))
 
 #  Place widgets in interface frame
 title.grid(row=0, columnspan=2)
-g_code.grid(row=4, columnspan=2)
-closures.grid(row=3, columnspan=2)
+g_code.grid(row=6, columnspan=2)
+closures.grid(row=5, columnspan=2)
 file.grid(row=1, column=0)
 new.grid(row=1, column=1)
 save.grid(row=2, columnspan=2)
-clear.grid(row=5, column=0)
-close.grid(row=5, column=1)
-coords_realtime.grid(row=7, columnspan=2)
+filename.grid(row=3, columnspan=2)
+entries.grid(row=4, columnspan=2)
+clear.grid(row=7, column=0)
+close.grid(row=7, column=1)
+coords_realtime.grid(row=9, columnspan=2)
 
 #  Initialize event handler
 draw.bind("<Button-1>", drawline, add="+")
@@ -667,8 +694,8 @@ root.bind("q", lambda e: root.destroy())
 closures.bind("<Button-1>", include_closures)
 draw.bind("<Motion>", display_coords_realtime)
 root.bind("y", copy_gauss)
-# save.bind("<Button-1>", write_data)
-# root.bind("w", write_data)
+save.bind("<Button-1>", write_data)
+root.bind("w", write_data)
 file.bind("<Button-1>",open_file)
 new.bind("<Button-1>",new_file)
 
