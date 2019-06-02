@@ -8,12 +8,12 @@ import tkinter.filedialog as fd
 import numpy as np
 import pyknotid
 import pyknotid.spacecurves as pkidsc
+#from pyknotid.representations import GaussCode, Representation
 from sympy import Symbol, exp, I, pi
 
 
 # set initial point
 x0, y0 = 0, 0
-
 gc_str = ""
 
 #  Set line/node defaults
@@ -223,32 +223,44 @@ def drawline(event):
         y_intersect = local_intersect[1]
         update_crossroads(x_intersect, y_intersect)
 
-#  Calculate gauss code and update label
+#  Calculate gauss code, alexander polynomial, determinant, 2nd and 3rd degree vassiliev
+#  invariants and updates the label
 def find_gc(event):
     global gc_str
+    global alexander_str
+    global determinant_str
+    global vassiliev2_str
+    global vassiliev3_str
     if len(node_coords) > 1:
         #  Convert to array
         node_coords_array = np.asarray(node_coords)
-        #  Calculate gauss code
-        closures = clos_var.get()  # Returns opposite of current button state
-        if closures == 0:
-            gc = pkidsc.spacecurve.SpaceCurve(
-                node_coords_array, verbose=False
-            ).gauss_code(include_closure=False)
-        else:
-            gc = pkidsc.spacecurve.SpaceCurve(
-                node_coords_array, verbose=False
-            ).gauss_code()
-        gc_str = str(gc)
-        g_code.config(text=gc_str)
+        ##np.append(node_coords_array,node_coords[0])
+        # Calculate gauss code
+        #closures = clos_var.get()  # Returns opposite of current button state
+        #if closures == 0:
+        #    gc = pkidsc.spacecurve.SpaceCurve(
+        #        node_coords_array, verbose=False
+        #    ).gauss_code(include_closure=False)
+        #else:
+        #    gc = pkidsc.spacecurve.SpaceCurve(
+        #        node_coords_array, verbose=False
+        #    ).gauss_code()
+        k = pkidsc.Knot(node_coords_array)
+        gc = k.gauss_code()
+        ##gc.simplify()
+        #ap = 
+        #det = k.determinant()
+        #vas2 = 
+        #vas3 = 
+        g_code.config(text=str(gc))
         # perform_analysis()
 
         # results.config(text="Determinant|Δ(-1)|     " + str(analysis_results[0]) + "\n" +
         #                    "|Δ(exp(2πi/3)|     " + str(analysis_results[1]) + "\n" +
         #                    "|Δ(i)|     " + str(analysis_results[2]) + "\n")
         #                    #"Vassiliev order 2, v2     " + str(analysis_results[4]) + "\n" +
-        #                    #"Vassiliev order 3, v3     " + str(analysis_results[5]) + "\n")
-
+        #                    #"Vassiliev order 3, v3     " + str(analysis_results[5]) +
+        #                    "\n")
 
 #  Placehold for button functionality
 def button_placeholder():
@@ -582,6 +594,16 @@ def copy_gauss(event):
     root.clipboard_clear()
     root.clipboard_append(gc_str)
 
+# open file to save data
+def open_file(event):
+    root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
+    print(root.filename)
+
+# new file to save data to
+def new_file(event):
+    root.filename = fd.asksaveasfilename(initialdir = "/", title = "New file",
+    defaultextension=".csv")
+    print(root.filename)
 
 #  Create GUI
 root = tk.Tk()
@@ -616,7 +638,8 @@ g_code = tk.Label(interface_frame, text="--", font=("Helvetica", 15), wraplength
 clos_var = tk.IntVar()
 closures = tk.Checkbutton(interface_frame, text="Include closure", variable=clos_var)
 
-file = tk.Button(interface_frame, text="File (f)")
+file = tk.Button(interface_frame, text="File")
+new = tk.Button(interface_frame, text="New")
 save = tk.Button(interface_frame, text="Save (w)")
 # results = tk.Label(interface_frame, text="Results Goes Here")
 close = tk.Button(interface_frame, text="Quit (q)")
@@ -625,13 +648,14 @@ coords_realtime = tk.Label(interface_frame, text="--")
 
 #  Place widgets in interface frame
 title.grid(row=0, columnspan=2)
-g_code.grid(row=3, columnspan=2)
-closures.grid(row=2, columnspan=2)
+g_code.grid(row=4, columnspan=2)
+closures.grid(row=3, columnspan=2)
 file.grid(row=1, column=0)
-save.grid(row=1, column=1)
-clear.grid(row=4, column=0)
-close.grid(row=4, column=1)
-coords_realtime.grid(row=6, columnspan=2)
+new.grid(row=1, column=1)
+save.grid(row=2, columnspan=2)
+clear.grid(row=5, column=0)
+close.grid(row=5, column=1)
+coords_realtime.grid(row=7, columnspan=2)
 
 #  Initialize event handler
 draw.bind("<Button-1>", drawline, add="+")
@@ -645,5 +669,7 @@ draw.bind("<Motion>", display_coords_realtime)
 root.bind("y", copy_gauss)
 # save.bind("<Button-1>", write_data)
 # root.bind("w", write_data)
+file.bind("<Button-1>",open_file)
+new.bind("<Button-1>",new_file)
 
 root.mainloop()
