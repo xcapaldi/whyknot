@@ -598,7 +598,8 @@ def copy_gauss(event):
 # open file to save data
 def open_file(event):
     global numknots
-    numknots = 0
+    # set number of entries to -1 initially so we don't count the header
+    numknots = -1
     root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
     filename.config(text=root.filename.split("/")[-1])
     # update numknots NEEDS TESTING
