@@ -5,16 +5,19 @@
 
 import tkinter as tk
 import tkinter.filedialog as fd
+import tkinter.messagebox as mb
 import numpy as np
 import pyknotid
 import pyknotid.spacecurves as pkidsc
-#from pyknotid.representations import GaussCode, Representation
-from sympy import Symbol, exp, I, pi
+import sympy
 import csv
+import os
 
 # set initial point
 x0, y0 = 0, 0
 gc_str = ""
+fileopen = False
+t = sympy.Symbol('t')
 
 #  Set line/node defaults
 linewidth = 2
@@ -226,11 +229,8 @@ def drawline(event):
 #  Calculate gauss code, alexander polynomial, determinant, 2nd and 3rd degree vassiliev
 #  invariants and updates the label
 def find_gc(event):
-    global gc_str
-    global alexander_str
-    global determinant_str
-    global vassiliev2_str
-    global vassiliev3_str
+    global gc
+    global k
     if len(node_coords) > 1:
         #  Convert to array
         node_coords_array = np.asarray(node_coords)
@@ -247,11 +247,8 @@ def find_gc(event):
         #    ).gauss_code()
         k = pkidsc.Knot(node_coords_array)
         gc = k.gauss_code()
-        ##gc.simplify()
-        #ap = 
-        #det = k.determinant()
-        #vas2 = 
-        #vas3 = 
+        # simplify the gauss code
+        gc.simplify()
         g_code.config(text=str(gc))
         # perform_analysis()
 
@@ -614,10 +611,12 @@ def copy_gauss(event):
 # open file to save data
 def open_file(event):
     global numknots
+    global fileopen
     # set number of entries to -1 initially so we don't count the header
     numknots = -1
     root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
     filename.config(text=root.filename.split("/")[-1])
+    fileopen = True
     # update numknots NEEDS TESTING
     with  open(root.filename, newline='') as csvfile:
         knotentries = csv.reader(csvfile, delimiter = ' ', quotechar="|")
@@ -628,6 +627,7 @@ def open_file(event):
 # new file to save data to
 def new_file(event):
     global numknots
+    global fileopen
     # ask for new filename and location
     root.filename = fd.asksaveasfilename(initialdir = "/", title = "New file",
     defaultextension=".csv")
@@ -637,13 +637,34 @@ def new_file(event):
         writer.writerow(["gauss","crossingnum","alexander"])
     # update filename
     filename.config(text=root.filename.split("/")[-1])
+    fileopen = True
     # set number of knots to 0
     numknots = 0
 
 def write_data(event):
     global numknots
-    numknots=numknots+1
-    entries.config(text=str(numknots)+" entries")
+    if fileopen == True:
+        # update number of knots
+        numknots=numknots+1
+        entries.config(text=str(numknots)+" entries")
+        # check if knot directory exists and creates it if not
+        jsonpath = root.filename[:-4]+"_json"
+        if os.path.exists(jsonpath)!=True:
+            os.makedirs(jsonpath)
+        # save knot coordinate data to json file
+        k.to_json(jsonpath+"/"+str(numknots)+".json")
+        # write knot analysis to csv
+        with open(root.filename,'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([str(gc),len(gc),str(k.alexander_polynomial(variable=t))])
+    else:
+        mb.showerror("Error", "No active file. Open a file or start a new file to save data.")
+    
+def popuphelp(event):
+    mb.showinfo("Help", "A wrapper which allows graphical input of knots to be analyzed with pyknotid.\nYou can open a previous csv file or start a new one and then draw your knot. The closure option doesn't change the analysis. It only affects the appearance. Upon saving (w), the knot coordinates are saved as a json file in a subfolder created by the program in the working directory. The analysis details are also appended to the csv. The canvas can be cleared (c) and the program can be closed easily (q).\nCreated by Xavier and Luc Capaldi and released with the MIT License (c) 2019. ")
+
+def popupmoo(event):
+    mb.showwarning("Moo", "    -----------\n< whyknot >\n    -----------\n        \   ^__^\n         \  (oo)\_______\n            (__)\           )\/\ \n                  ||-----w |\n                  ||        ||")
 
 #  Create GUI
 root = tk.Tk()
@@ -681,6 +702,7 @@ closures = tk.Checkbutton(interface_frame, text="Include closure", variable=clos
 file = tk.Button(interface_frame, text="File")
 new = tk.Button(interface_frame, text="New")
 save = tk.Button(interface_frame, text="Save (w)")
+help = tk.Button(interface_frame, text="Help")
 # results = tk.Label(interface_frame, text="Results Goes Here")
 close = tk.Button(interface_frame, text="Quit (q)")
 clear = tk.Button(interface_frame, text="Clear (c)")
@@ -694,7 +716,8 @@ g_code.grid(row=6, columnspan=2)
 closures.grid(row=5, columnspan=2)
 file.grid(row=1, column=0)
 new.grid(row=1, column=1)
-save.grid(row=2, columnspan=2)
+save.grid(row=2, column=0)
+help.grid(row=2, column=1)
 filename.grid(row=3, columnspan=2)
 entries.grid(row=4, columnspan=2)
 clear.grid(row=7, column=0)
@@ -712,8 +735,10 @@ closures.bind("<Button-1>", include_closures)
 draw.bind("<Motion>", display_coords_realtime)
 root.bind("y", copy_gauss)
 save.bind("<Button-1>", write_data)
+help.bind("<Button-1>", popuphelp)
 root.bind("w", write_data)
 file.bind("<Button-1>",open_file)
 new.bind("<Button-1>",new_file)
+root.bind("m", popupmoo)
 
 root.mainloop()
