@@ -5,16 +5,19 @@
 
 import tkinter as tk
 import tkinter.filedialog as fd
+import tkinter.messagebox as mb
 import numpy as np
 import pyknotid
 import pyknotid.spacecurves as pkidsc
-from sympy import Symbol, exp, I, pi
-
+import sympy
+import csv
+import os
 
 # set initial point
 x0, y0 = 0, 0
-
 gc_str = ""
+fileopen = False
+t = sympy.Symbol('t')
 
 #  Set line/node defaults
 linewidth = 2
@@ -254,16 +257,38 @@ def drawline(event):
         else:
             update_crossroads(x_intersect, y_intersect)
 
-#  Calculate gauss code and update label
+#  Calculate gauss code, alexander polynomial, determinant, 2nd and 3rd degree vassiliev
+#  invariants and updates the label
 def find_gc(event):
-    global gc_str
-    if len(knot_coords) > 1:
+    global gc
+    global k
+    if len(node_coords) > 1:
         #  Convert to array
-        knot_coords_array = np.asarray(knot_coords)
-        gc = pkidsc.spacecurve.SpaceCurve(
-            knot_coords_array, verbose=False).gauss_code(include_closure=False)
-        gc_str = str(gc)
-        g_code.config(text=gc_str)
+        node_coords_array = np.asarray(node_coords)
+        ##np.append(node_coords_array,node_coords[0])
+        # Calculate gauss code
+        #closures = clos_var.get()  # Returns opposite of current button state
+        #if closures == 0:
+        #    gc = pkidsc.spacecurve.SpaceCurve(
+        #        node_coords_array, verbose=False
+        #    ).gauss_code(include_closure=False)
+        #else:
+        #    gc = pkidsc.spacecurve.SpaceCurve(
+        #        node_coords_array, verbose=False
+        #    ).gauss_code()
+        k = pkidsc.Knot(node_coords_array)
+        gc = k.gauss_code()
+        # simplify the gauss code
+        gc.simplify()
+        g_code.config(text=str(gc))
+        # perform_analysis()
+
+        # results.config(text="Determinant|Δ(-1)|     " + str(analysis_results[0]) + "\n" +
+        #                    "|Δ(exp(2πi/3)|     " + str(analysis_results[1]) + "\n" +
+        #                    "|Δ(i)|     " + str(analysis_results[2]) + "\n")
+        #                    #"Vassiliev order 2, v2     " + str(analysis_results[4]) + "\n" +
+        #                    #"Vassiliev order 3, v3     " + str(analysis_results[5]) +
+        #                    "\n")
 
 #  Placehold for button functionality
 def button_placeholder():
@@ -809,6 +834,64 @@ def copy_gauss(event):
     root.clipboard_append(gc_str)
 
 
+# open file to save data
+def open_file(event):
+    global numknots
+    global fileopen
+    # set number of entries to -1 initially so we don't count the header
+    numknots = -1
+    root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
+    filename.config(text=root.filename.split("/")[-1])
+    fileopen = True
+    # update numknots NEEDS TESTING
+    with  open(root.filename, newline='') as csvfile:
+        knotentries = csv.reader(csvfile, delimiter = ' ', quotechar="|")
+        for row in knotentries:
+            numknots+=1
+    entries.config(text=str(numknots)+" entries")
+
+# new file to save data to
+def new_file(event):
+    global numknots
+    global fileopen
+    # ask for new filename and location
+    root.filename = fd.asksaveasfilename(initialdir = "/", title = "New file",
+    defaultextension=".csv")
+    # make file
+    with open(root.filename,'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(["gauss","crossingnum","alexander"])
+    # update filename
+    filename.config(text=root.filename.split("/")[-1])
+    fileopen = True
+    # set number of knots to 0
+    numknots = 0
+
+def write_data(event):
+    global numknots
+    if fileopen == True:
+        # update number of knots
+        numknots=numknots+1
+        entries.config(text=str(numknots)+" entries")
+        # check if knot directory exists and creates it if not
+        jsonpath = root.filename[:-4]+"_json"
+        if os.path.exists(jsonpath)!=True:
+            os.makedirs(jsonpath)
+        # save knot coordinate data to json file
+        k.to_json(jsonpath+"/"+str(numknots)+".json")
+        # write knot analysis to csv
+        with open(root.filename,'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([str(gc),len(gc),str(k.alexander_polynomial(variable=t))])
+    else:
+        mb.showerror("Error", "No active file. Open a file or start a new file to save data.")
+    
+def popuphelp(event):
+    mb.showinfo("Help", "A wrapper which allows graphical input of knots to be analyzed with pyknotid.\nYou can open a previous csv file or start a new one and then draw your knot. The closure option doesn't change the analysis. It only affects the appearance. Upon saving (w), the knot coordinates are saved as a json file in a subfolder created by the program in the working directory. The analysis details are also appended to the csv. The canvas can be cleared (c) and the program can be closed easily (q).\nCreated by Xavier and Luc Capaldi and released with the MIT License (c) 2019. ")
+
+def popupmoo(event):
+    mb.showwarning("Moo", "    -----------\n< whyknot >\n    -----------\n        \   ^__^\n         \  (oo)\_______\n            (__)\           )\/\ \n                  ||-----w |\n                  ||        ||")
+
 #  Create GUI
 root = tk.Tk()
 root.title("WhyKnot")
@@ -842,22 +925,30 @@ g_code = tk.Label(interface_frame, text="--", font=("Helvetica", 15), wraplength
 clos_var = tk.IntVar()
 closures = tk.Checkbutton(interface_frame, text="Include closure", variable=clos_var)
 
-file = tk.Button(interface_frame, text="File (f)")
+file = tk.Button(interface_frame, text="File")
+new = tk.Button(interface_frame, text="New")
 save = tk.Button(interface_frame, text="Save (w)")
+help = tk.Button(interface_frame, text="Help")
 # results = tk.Label(interface_frame, text="Results Goes Here")
 close = tk.Button(interface_frame, text="Quit (q)")
 clear = tk.Button(interface_frame, text="Clear (c)")
 coords_realtime = tk.Label(interface_frame, text="--")
+filename = tk.Label(interface_frame, text="no file", font=("Helvetica",10))
+entries = tk.Label(interface_frame, text="0 entries", font=("Helvetica",10))
 
 #  Place widgets in interface frame
 title.grid(row=0, columnspan=2)
-g_code.grid(row=3, columnspan=2)
-closures.grid(row=2, columnspan=2)
+g_code.grid(row=6, columnspan=2)
+closures.grid(row=5, columnspan=2)
 file.grid(row=1, column=0)
-save.grid(row=1, column=1)
-clear.grid(row=4, column=0)
-close.grid(row=4, column=1)
-coords_realtime.grid(row=6, columnspan=2)
+new.grid(row=1, column=1)
+save.grid(row=2, column=0)
+help.grid(row=2, column=1)
+filename.grid(row=3, columnspan=2)
+entries.grid(row=4, columnspan=2)
+clear.grid(row=7, column=0)
+close.grid(row=7, column=1)
+coords_realtime.grid(row=9, columnspan=2)
 
 #  Initialize event handler
 draw.bind("<Button-1>", drawline, add="+")
@@ -870,7 +961,11 @@ closures.bind("<Button-1>", include_closures)
 #closures.bind("<Button-1>", find_gc)
 draw.bind("<Motion>", display_coords_realtime)
 root.bind("y", copy_gauss)
-# save.bind("<Button-1>", write_data)
-# root.bind("w", write_data)
+save.bind("<Button-1>", write_data)
+help.bind("<Button-1>", popuphelp)
+root.bind("w", write_data)
+file.bind("<Button-1>",open_file)
+new.bind("<Button-1>",new_file)
+root.bind("m", popupmoo)
 
 root.mainloop()
