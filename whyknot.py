@@ -310,7 +310,6 @@ def include_closures(event):
         node_coords_backup.append(coord)
     for coord in knot_coords:
         knot_coords_backup.append(coord)
-    #print("backup" + str(node_coords_backup))
     #  Delete any previous closure lines and return them to their previous state...
     closure_return_state()
     
@@ -394,6 +393,14 @@ def calculate_bridge_coords(line_start, line_end, x, y, m, b):
         y_upper = (m*x_upper)+b
         x_lower = x + bridge_width
         y_lower = (m*x_lower)+b
+
+        #  Determine if coords need to be swapped
+        if line_start[0] > line_end[0]:  #  Line visually oriented end to start
+            if (line_start[0] - x_upper) > (line_start[0] - x_lower):
+                swap = True
+            else:
+                if (line_start[0] + x_upper) > (line_start[0] + x_lower):
+                    swap = True
 
     #  Swap coords as necessary
     if swap:
@@ -686,14 +693,18 @@ def create_intersections(x, y):
                                           crossroad2_y_lower]
 
     #  Add initial bridge values to knot_coords
-
     #  Identify all intersects along the given line and order them
     bridge_intersects = line2_coords[1:-1]
-    bridge_intersects.sort()
+
+    #  Sort intersects based on orientation of line
+    if line_start_coords[line2_num][0] > line_end_coords[line2_num][0]:
+        #  Start point of line is higher than end point
+        bridge_intersects = sorted(bridge_intersects, reverse = True)
+    else:
+        bridge_intersects = sorted(bridge_intersects)
         
     #  Identify exact index value at which to insert ordered bridge coords
     bridge_index = (line2_num + (len(intersected_list)*4) +1)
-    #print(bridge_index)
 
     #  Store locations and order of intersects to use for later indexing
     if line2_num not in intersected_list:
@@ -703,18 +714,15 @@ def create_intersections(x, y):
     bridge_coords = []
     for coord in bridge_intersects:
         bridge_coord_list = calculate_bridge_coords(line_start_coords[line2_num],
-                                         line_end_coords[line2_num], coord[0],
-                                         coord[1], line2_m, line2_b)
+                                                    line_end_coords[line2_num],
+                                                    coord[0], coord[1], line2_m, line2_b)
         bridge_coords.append(bridge_coord_list)
 
     #  Insert bridge coords into knot_coords
     for bridge in bridge_coords:
-        for coord in bridge[::-1]:
+        for coord in bridge:   #  was bridge[::-1]
             knot_coords.insert(bridge_index, coord)
-            bridge_index +=1
-    print('\n')
-    print(knot_coords)
-
+            #bridge_index +=1
 
 #  Update currently existing crossroads and modify bridge coords
 def update_crossroads(x,y, closure = False):
