@@ -2,7 +2,7 @@
 #  Graphical wrapper for PyKnotID package
 #  Xavier and Luc Capaldi
 
-
+# import modules
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
@@ -13,13 +13,13 @@ import sympy
 import csv
 import os
 
-# set initial point
+# set initial values
 x0, y0 = 0, 0
 gc_str = ""
 fileopen = False
-t = sympy.Symbol('t')
+t = sympy.Symbol('t') # for use in displaying polynomial invariant
 
-#  Set line/node defaults
+#  Set line/node graphical defaults
 linewidth = 2
 linecolor = "#a3be8c"
 noderadius = 5
@@ -27,150 +27,101 @@ nodecolor = "#bf616a"
 bridgewidth = 3
 background_color = "#d9d9d9"
 
-#  Create lists to store variables
-knot_coords = []  #  Includes node coords and bridges
-node_coords = []  #  Includes node coords only
-line_start_coords = []
-line_end_coords = []
-line_m = []
-line_b = []
-intersect_coords = []
-closure_line_info = []
-closure_intersects = []
-
-#  Key: intersect coordinates
-#  Value: index number of line being intersected, line intersecting
-intersect_node_dict = {}
-analysis_results = []  #  Order of items in results: Crossing number,
-#  Determinant|Δ(-1)|, |Δ(exp(2πi/3)|, |Δ(i)|,
-#  Vassiliev order 2 (v2), Vassiliev order 3 (v3)
-
-intersect_stack_dict = {}  #  Stores which line is on top/bottom
-
-node_counter = 0
-line_counter = 0
-#  Placeholder tag values
-line1_tag = "tag1_0_0"
-line2_tag = "tag2_0_0"
-tag_dict = {}  #  Stores tag for line segments
-intersect_crossroads = {}  #  Positions for crossroad lines
-crossroad_start_end = {}   #  Current start/end coordinates for crossroads
-intersected_list = []  #  Line number stored if intersected
-
-#  Bounds for slope (to identify when to rotate line 90 degrees)
-m_lower_bound = -5
-m_upper_bound = 5
-
-
-#  Find all intersects for current (newest) line segment
-#  Input is x-range, slope and y-intercept for test line
-def calculate_intersect_coords(p1, p2, m1, b1, closure=False):
-    global intersect_coords, intersect_node_dict
-    intercepts = []
-    #  Put in correct order
-    if p2 > p1:
-        p2, p1 = p1, p2
-    counter = 0
-    
-    if closure:
-        coord_index = -1
+# determine equation of line
+def defineline(x1,y1,x2,y2):
+    xbound = [x1,x2]
+    ybound = [y1,y2]
+    if x1 == x2:
+        slope = None
     else:
-        coord_index = -2
-        
-    for coord_start, coord_end in zip(line_start_coords[:coord_index], line_end_coords[:coord_index]):
-        p3 = coord_start[0]
-        p4 = coord_end[0]
-        #  Put in correct order
-        if p4 > p3:
-            p4, p3 = p3, p4
-        #  Calculate x coord of potential intersection
-        m2 = line_m[counter]
-        b2 = line_b[counter]
-        counter += 1
-        try:
-            x = (b2 - b1) / (m1 - m2)
-        except:
-            print("exception")
-            x = 0.0000001
-        #  Verify coord is an intersection
-        if x < p1 and x > p2 and x < p3 and x > p4:
-            #  Calculate y coord of intersect
-            y = (m1 * x) + b1
-            line_num_bot = counter - 1
-            line_num_top = len(node_coords) - 2
-            intercepts.append([x,y, line_num_bot, line_num_top])
-    return intercepts
+        slope = (y2-y1)/(x2-x1)
+    return xbound, ybound, slope
 
-#  Find slope of given line from two points
-def find_slope(p1, p2):
-    #  (y2 - y1) / (x2 - x1)
-    try:
-        slope = (p2[1] - p1[1]) / (p2[0] - p1[0])
-    except ZeroDivisionError:
-        #  Prevent zero division
-        slope = 0.000001
-    return slope
+# find the y-intercept of a given line
+def findyintercept(x,y,m):
+    b = y - (m * x)
+    return b
 
 
-#  Find y-intercept of given line from two points and slope
-def find_y_intercept(p1, slope):
-    #  b = y - mx
-    return p1[1] - (slope * p1[0])
+# check if two lines intersect
+def checkintersect(xbound1,xbound2,ybound1,ybound2,slope1,slope2):
+    # check if we have overlap in x range first
+    if max(xbound1) > min(xbound2) or max(xbound2) > min(xbound1):
+        # then check if we have overlap in y range
+        if max(ybound1) > min(ybound2) or max(ybound2) > min(ybound1):
+           # then check if line 1 is vertical
+           if slope1 == None:
+               # in this case, the two lines intersect everywhere
+               if slope2 == None:
+                   # technically not correct but for the purposes of this script it will
+                   # suffice
+                   return None 
+               # otherwise, only line 1 is vertical
+               else:
+                   b2=findyintercept(xbound2[0],ybound2[0],slope2)
+                   xintersect = xbound1[0]
+                   yintersect = slope2 * xintersect + b2
+                   return xintersect, yintersect
+           elif slope2 == None:
+               # the previous conditional already checked if line 1 was vertical
+               b1=findyintercept(xbound1[0],ybound1[0],slope1)
+               xintersect = xbound2[0]
+               yintersect = slope1 * xintersect + b1
+               return xintersect, yintersect
+           # if neither line is vertical
+           else:
+               b1=findyintercept(xbound1[0],ybound1[0],slope1)
+               b2=findyintercept(xbound2[0],ybound2[0],slope2)
+               xintersect = (b2-b1)/(slope1-slope2)
+               yintersect = slope1 * xintersect + b1
+               return xintersect, yintersect
+        else:
+            return None # outside y range
+    else:
+        return None # outside x range
+
+# determine which lines to check for intersection
+# this function ignores the end point of the lines which is good for our purposes
+# I am not sure if this is computationally more efficient than just checking for
+# intersections with every line
+def potentialintersection(xbound,ybound,linearray):
+    # take the bounds of one line and the bounds of the other lines stored in an array
+    # define bounding box
+    left = min(xbound)
+    right = max(xbound)
+    bottom = min(ybound)
+    top = max(ybound)
+    # empty array to store lines with potential intersections
+    potintersections = []
+    # each element of linearray is a list which contains the xbounds, ybounds and slope
+    for line in linearray:
+        xmin = min(line[0])
+        xmax = max(line[0])
+        ymin = min(line[1])
+        ymax = max(line[1])
+        # check if the line is in the bounding box at all
+        if (xmax > left and xmax < right) or (xmin > left and xmin < right):
+            if (ymax > bottom and ymax < top) or (ymin > bottom and ymin < top):
+                potintersections.append(line)
+    return potintersections
 
 
-#  Record line information in arrays
-def record_line_info(x, y):
-    global node_coords, knot_coords, line_start_coords, line_end_coords, line_m, line_b
-    #  Calculate/record coordinate and line information
-    node_coords.append([x, y, 0])
-    knot_coords.append([x, y, 0])
-    if len(node_coords) > 1:
-        line_end_coords.append([node_coords[-1][0], node_coords[-1][1]])
-        line_start_coords.append([node_coords[-2][0], node_coords[-2][1]])
-        
-        line_m_value = find_slope(line_start_coords[-1], line_end_coords[-1])
-        line_m.append(line_m_value)
-        line_b_value = find_y_intercept(line_start_coords[-1], line_m[-1])
-        line_b.append(line_b_value)
-
-
-#  Perform and store analysis based on drawn knot
-def perform_analysis():
-    global analysis_results
-    #  Don't need to use #add_closure argument for Knot class because it is
-    #  purely visual and does not effect the analysis.
-    if len(intersect_coords) > 0:
-        knot_coords_array = np.asarray(knot_coords)
-        # crossing_num = find_crossing_number()
-        #  'Reduced crossing number' is excluded because it is unknown and is
-        #  never assigned a value on the online module.
-        #  Determinant|Δ(-1)| - Alexander polynomial evaluated at -1
-        determinant = pkidsc.knot.Knot(knot_coords_array, verbose=False).determinant()
-        #  |Δ(exp(2πi/3)| - Alexander polynomial evaluated at 2πi/3
-        alexander_1 = pkidsc.knot.Knot(
-            knot_coords_array, verbose=False
-        ).alexander_polynomial(exp((2 * pi * I) / 3))
-        #  |Δ(i)| - Alexander polynomial evaluated at i
-        alexander_2 = pkidsc.knot.Knot(
-            knot_coords_array, verbose=False
-        ).alexander_polynomial(I)
-        #  Vassiliev invariant order 2, v2
-        vassiliev_order2 = pkidsc.knot.Knot(
-            knot_coords_array, verbose=False
-        ).vassiliev_degree_2
-        #  Vassiliev invariant order 3, v3
-        vassiliev_order3 = pkidsc.knot.Knot(
-            knot_coords_array, verbose=False
-        ).vassiliev_degree_3
-        #  Store results of analysis
-        analysis_results = [
-            determinant,
-            alexander_1,
-            alexander_2,
-            vassiliev_order2,
-            vassiliev_order3,
-        ]
-
+# define bounds of bridge
+def definebridge(xintersect,yintersect,slope,bridgewidth,bridgeheight):
+    # slope represents the top line
+    halfbridge = bridgewidth/2
+    # if top line is vertical
+    if slope == None:
+        x = 0
+        y = halfbridge
+    # else if top line has an angle from vertical
+    else:
+        # find angle from slope
+        angle = np.arctan(slope)
+        x = halfbridge*np.cos(angle)
+        y = halfbridge*np.sin(angle)
+    bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+    return bridge
 
 #  Draw new lines and nodes based on mouse click event
 def drawline(event):
@@ -265,35 +216,11 @@ def find_gc(event):
     if len(node_coords) > 1:
         #  Convert to array
         node_coords_array = np.asarray(node_coords)
-        ##np.append(node_coords_array,node_coords[0])
-        # Calculate gauss code
-        #closures = clos_var.get()  # Returns opposite of current button state
-        #if closures == 0:
-        #    gc = pkidsc.spacecurve.SpaceCurve(
-        #        node_coords_array, verbose=False
-        #    ).gauss_code(include_closure=False)
-        #else:
-        #    gc = pkidsc.spacecurve.SpaceCurve(
-        #        node_coords_array, verbose=False
-        #    ).gauss_code()
         k = pkidsc.Knot(node_coords_array)
         gc = k.gauss_code()
         # simplify the gauss code
         gc.simplify()
         g_code.config(text=str(gc))
-        # perform_analysis()
-
-        # results.config(text="Determinant|Δ(-1)|     " + str(analysis_results[0]) + "\n" +
-        #                    "|Δ(exp(2πi/3)|     " + str(analysis_results[1]) + "\n" +
-        #                    "|Δ(i)|     " + str(analysis_results[2]) + "\n")
-        #                    #"Vassiliev order 2, v2     " + str(analysis_results[4]) + "\n" +
-        #                    #"Vassiliev order 3, v3     " + str(analysis_results[5]) +
-        #                    "\n")
-
-#  Placehold for button functionality
-def button_placeholder():
-    print("Hello world")
-
 
 #  Clear all data and objects on canvas
 def clear_canvas(event):
@@ -323,516 +250,19 @@ def clear_canvas(event):
     closure_intersects.clear()
     intersected_list.clear()
 
-
-#  Visually add or remove the closure line segment
-def include_closures(event):
-    global closure_line_info, closure_intersects
-
-    #  Record previous state of node_coords and knot_coords
-    node_coords_backup = []
-    knot_coords_backup = []
-    for coord in node_coords:
-        node_coords_backup.append(coord)
-    for coord in knot_coords:
-        knot_coords_backup.append(coord)
-    #  Delete any previous closure lines and return them to their previous state...
-    closure_return_state()
-    
-    closure = clos_var.get()  # Returns opposite of current button state
-    
-    if len(node_coords) > 1:
-        if closure == 0:
-            #  Calculate info about closure line
-            x1 = node_coords[0][1]
-            y1 = node_coords[0][0]
-            x2 = node_coords[-1][1]
-            y2 = node_coords[-1][0]
-            closure_m = find_slope([x1, y1], [x2, y2])
-            closure_b = find_y_intercept([x1, y1], closure_m)
-            closure_line_info = [[x1, y1], [x2, y2], closure_m, closure_b]
-
-            #  Find intersects for closure line
-            closure_intersects = calculate_intersect_coords(x1, x2, closure_m,
-                                                            closure_b, closure=True)
-
-            #  Verify start or end coord not included in list
-            start_x, start_y = round(x1), round(y1)
-            end_x, end_y = round(x2), round(y2)
-            count = 0
-            for intersect in closure_intersects:
-                intersect_x = round(intersect[0])
-                intersect_y = round(intersect[1])
-                if intersect_x == start_x and intersect_y == start_y:
-                    del closure_intersects[count]
-                if intersect_x == end_x and intersect_y == end_y:
-                    del closure_intersects[count]
-                count +=1
-                
-            #  Create new closure line and change values as necessary...
-            if len(closure_intersects) == 0:
-                draw.create_line(x1, y1, x2, y2, fill=linecolor,
-                                 width=linewidth, tags="closure")
-            else:
-                #  Add closure line to node coords
-                node_coords.append([x2, y2, 1])
-                for i in closure_intersects:
-                    #  i = [x,y, line_num_bot, line_num_top]
-                    line_num_bot = i[2]
-                    #  Record intersect in dictionary
-                    intersect_node_dict[(i[0], i[1])] = i[2], "c"
-                    #  Create actual intersect line segments
-                    create_intersections(i[0], i[1])
-
-#  Returns line segments and z-values to state prior to closure line
-def closure_return_state():
-    draw.delete("closure")
-    draw.delete("closure_crossroad")                 
-
-
-#  Calculate the 4 coord positions for an intersection bridge
-def calculate_bridge_coords(line_start, line_end, x, y, m, b):
-    bridge_coords = []
-    #  Variable to track if bridge coords need to be swapped
-    swap = False
-    #  Bridge width (multiply by two for total width)
-    bridge_width = 5
-    if m < m_lower_bound or m > m_upper_bound:
-        if m > 0:
-            y_upper = y + bridge_width
-            y_lower = y - bridge_width
-        else:
-            y_upper = y - bridge_width
-            y_lower = y + bridge_width
-        x_upper = (y_upper - b) / m
-        x_lower = (y_lower - b) / m
-        
-        #  Determine if coords need to be swapped
-        if line_start[1] > line_end[1]:  #  Line visually oriented end to start
-            if (line_start[1] - y_upper) > (line_start[1] - y_lower):
-                swap = True
-        else:                            #  Line visually oriented start to end
-            if (line_start[1] + y_upper) > (line_start[1] + y_lower):
-                swap = True 
-    else:
-        x_upper = x - bridge_width
-        y_upper = (m*x_upper)+b
-        x_lower = x + bridge_width
-        y_lower = (m*x_lower)+b
-
-        #  Determine if coords need to be swapped
-        if line_start[0] > line_end[0]:  #  Line visually oriented end to start
-            if (line_start[0] - x_upper) > (line_start[0] - x_lower):
-                swap = True
-            else:
-                if (line_start[0] + x_upper) > (line_start[0] + x_lower):
-                    swap = True
-
-    #  Swap coords as necessary
-    if swap:
-        bridge_start = [x_lower, y_lower]
-        bridge_end = [x_upper, y_upper]
-    else:
-        bridge_start = [x_upper, y_upper]
-        bridge_end = [x_lower, y_lower]
-
-    #  Generate coord positions for bridge
-    c1 = [bridge_start[0], bridge_start[1], 0]
-    c2 = [bridge_start[0], bridge_start[1], 1]
-    c3 = [bridge_end[0], bridge_end[1], 1]
-    c4 = [bridge_end[0], bridge_end[1], 0]
-
-    return [c1, c2, c3, c4]
-
-
-#  Visually represent line intersections and update z-values for
-#  initial crossings.
-def create_intersections(x, y):
-    global line1_tag, line2_tag, intersect_crossroads, closure_line_info, knot_coords
-    closure = False
-    
-    #  Retrieve tag values for intersecting lines
-    line_tags = intersect_node_dict.get((x, y))
-    
-    #  Check if line is the closure line
-    if line_tags[1] == "c":
-        closure = True
-        tag1_num = line_tags[0]
-        #  Generate tags
-        tag1 = "line_" + str(tag1_num)
-        tag2 = "closure"
-    else:
-        tag1_num = line_tags[0]  # bottom line/ line being intersected
-        tag2_num = line_tags[1]  # top line / line intersecting
-        #  Generate corresponding tags
-        tag1 = "line_" + str(tag1_num)
-        tag2 = "line_" + str(tag2_num)
-        
-    #  Find all other intersections on same line
-    line1_coords = []
-    line2_coords = []
-    if closure:
-        #  Record previously calculated intersects for closure line
-        for intersect in closure_intersects:
-            line2_coords.append([intersect[0], intersect[1]])
-        for intersect in intersect_coords:
-            intersect_line_nums = intersect_node_dict.get((intersect[0], intersect[1]))
-            line1_num = intersect_line_nums[0]
-            line2_num = intersect_line_nums[1]
-            if line1_num == tag1_num or line2_num == tag1_num:
-                line1_coords.append(intersect)
-        line1_coords.append([x,y])
-    else:
-        for intersect in intersect_coords:
-            intersect_line_nums = intersect_node_dict.get((intersect[0], intersect[1]))
-            line1_num = intersect_line_nums[0]
-            line2_num = intersect_line_nums[1]
-            if line1_num == tag1_num or line2_num == tag1_num:
-                line1_coords.append(intersect)
-            if line1_num == tag2_num or line2_num == tag2_num:
-                line2_coords.append(intersect)
-
-    #  Retrieve start and end coords for the two intersecting lines and add to
-    #  intersection lists
-    if closure:
-        line1_startpoint = line_start_coords[tag1_num]
-        line1_endpoint = line_end_coords[tag1_num]
-        line2_startpoint = closure_line_info[0]
-        line2_endpoint = closure_line_info[1]
-    else:
-        line1_startpoint = line_start_coords[tag1_num]
-        line1_endpoint = line_end_coords[tag1_num]
-        line2_startpoint = line_start_coords[tag2_num]
-        line2_endpoint = line_end_coords[tag2_num]
-        
-    line1_coords.append(line1_startpoint)
-    line1_coords.append(line1_endpoint)
-    line2_coords.append(line2_startpoint)
-    line2_coords.append(line2_endpoint)
-    
-    #  Sort intersection lists
-    line1_coords.sort()
-    line2_coords.sort()
-
-    #  Delete all previous line segments
-    if closure:
-        draw.delete(tag1)
-        #closure_return_state()
-        if tag1 in tag_dict:
-            segment_tags1 = tag_dict.get(tag1)
-            draw.delete(segment_tags1)
-    else:
-        draw.delete(tag1)
-        draw.delete(tag2)
-        if tag1 in tag_dict:
-            segment_tags1 = tag_dict.get(tag1)
-            draw.delete(segment_tags1)
-        if tag2 in tag_dict:
-            segment_tags2 = tag_dict.get(tag2)
-            draw.delete(segment_tags2)
-
-    #  Generate tags for new line segments and add to dictionary
-    if closure:
-        line1_tag = str("line1_" + str(x) + "_" + str(y))
-        line2_tag = "closure_segments"
-    else:
-        line1_tag = str("line1_" + str(x) + "_" + str(y))
-        line2_tag = str("line2_" + str(x) + "_" + str(y))
-    tag_dict[tag1] = line1_tag
-    tag_dict[tag2] = line2_tag
-    
-    #  Find all start and endpoints for line segments along line1
-    line1_segment_coords = []
-    position1 = 0
-    line1_m = line_m[tag1_num]
-    line1_b = line_b[tag1_num]
-    for intersect1, intersect2 in zip(line1_coords[0:], line1_coords[1:]):
-        #  Initial line segment
-        if position1 == 0:
-            line1_segment_coords.append([intersect1[0], intersect1[1]])
-            if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                if line1_m > 0:
-                    y_lower = intersect2[1]-6
-                else:
-                    y_lower = intersect2[1]+6
-                x_lower = (y_lower - line1_b) / line1_m
-            else:
-                x_lower = intersect2[0]-6
-                y_lower = (line1_m*x_lower)+line1_b
-            line1_segment_coords.append([x_lower, y_lower])
-
-        #  Final line segment     
-        elif position1 == len(line1_coords)-2:
-            if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                if line1_m > 0:
-                    y_upper = intersect1[1]+6
-                else:
-                    y_upper = intersect1[1]-6
-                x_upper = (y_upper - line1_b) / line1_m
-            else:
-                x_upper = intersect1[0]+6
-                y_upper = (line1_m*x_upper)+line1_b
-            line1_segment_coords.append([x_upper, y_upper])
-            line1_segment_coords.append(intersect2)
-            
-        #  All intermediary line segments
-        else:
-            if line1_m < m_lower_bound or line1_m > m_upper_bound:
-                if line1_m > 0:
-                    y_upper = intersect1[1]+6
-                    y_lower = intersect2[1]-6
-                else:
-                    y_upper = intersect1[1]-6
-                    y_lower = intersect2[1]+6
-                x_upper = (y_upper - line1_b) / line1_m
-                x_lower = (y_lower - line1_b) / line1_m
-            else:
-                x_upper = intersect1[0]+6
-                y_upper = (line1_m*x_upper)+line1_b
-                x_lower = intersect2[0]-6
-                y_lower = (line1_m*x_lower)+line1_b
-            line1_segment_coords.append([x_upper, y_upper])
-            line1_segment_coords.append([x_lower, y_lower])
-        position1 +=1
-        
-    #  Find all start and endpoints for line segments along line2
-    line2_segment_coords = []
-    position2 = 0
-    if closure:
-        line2_m = closure_line_info[2]
-        line2_b = closure_line_info[3]
-    else:
-        line2_m = line_m[tag2_num]
-        line2_b = line_b[tag2_num]
-    for intersect1, intersect2 in zip(line2_coords[0:], line2_coords[1:]):
-        #  Initial line segment
-        if position2 == 0:
-            line2_segment_coords.append([intersect1[0], intersect1[1]])
-            if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                if line2_m > 0:
-                    y_lower = intersect2[1]-6
-                else:
-                    y_lower = intersect2[1]+6
-                x_lower = (y_lower - line2_b) / line2_m
-            else:
-                x_lower = intersect2[0]-6
-                y_lower = (line2_m*x_lower)+line2_b
-            line2_segment_coords.append([x_lower, y_lower])
-            
-        #  Final line segment
-        elif position2 == len(line2_coords)-2:
-            if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                if line2_m > 0:
-                    y_upper = intersect1[1]+6
-                else:
-                    y_upper = intersect1[1]-6
-                x_upper = (y_upper - line2_b) / line2_m
-            else:
-                x_upper = intersect1[0]+6
-                y_upper = (line2_m*x_upper)+line2_b
-            segment_coords = [x_upper, y_upper]
-            line2_segment_coords.append([x_upper, y_upper])
-            line2_segment_coords.append([intersect2[0], intersect2[1]])
-
-        #  All intermediary line segments 
-        else:
-            if line2_m < m_lower_bound or line2_m > m_upper_bound:
-                if line2_m > 0:
-                    y_upper = intersect1[1]+6
-                    y_lower = intersect2[1]-6
-                else:
-                    y_upper = intersect1[1]-6
-                    y_lower = intersect2[1]+6
-                x_upper = (y_upper - line2_b) / line2_m
-                x_lower = (y_lower - line2_b) / line2_m
-            else:
-                x_upper = intersect1[0]+6
-                y_upper = (line2_m*x_upper)+line2_b
-                x_lower = intersect2[0]-6
-                y_lower = (line2_m*x_lower)+line2_b
-            line2_segment_coords.append([x_upper, y_upper])
-            line2_segment_coords.append([x_lower, y_lower])
-        position2 +=1
-   
-    #  Create all new line segments
-    for start, end in zip(line1_segment_coords[0::2], line1_segment_coords[1::2]):
-        draw.create_line(start[0], start[1], end[0], end[1],
-                         fill=linecolor, width=linewidth, tags = line1_tag)
-    for start, end in zip(line2_segment_coords[0::2], line2_segment_coords[1::2]):
-        draw.create_line(start[0], start[1], end[0], end[1],
-                         fill=linecolor, width=linewidth, tags = line2_tag)
-
-    #  Generate tag for intersect crossroads
-    if closure:
-        crossroad_tag = str("closure_crossroad_" + str(x) + "_" + str(y))
-    else:
-        crossroad_tag = str("crossroad_" + str(x) + "_" + str(y))
-        
-    #  Find crossroad coords
-    #  Line 1
-    if line1_m < m_lower_bound or line1_m > m_upper_bound:
-        if line1_m > 0:
-            crossroad1_y_upper = y+6
-            crossroad1_y_lower = y-6
-        else:
-            crossroad1_y_upper = y-6
-            crossroad1_y_lower = y+6
-        crossroad1_x_upper = (crossroad1_y_upper - line1_b) / line1_m
-        crossroad1_x_lower = (crossroad1_y_lower - line1_b) / line1_m   
-    else:
-        crossroad1_x_upper = x+6
-        crossroad1_x_lower = x-6
-        crossroad1_y_upper = (line1_m*crossroad1_x_upper)+line1_b
-        crossroad1_y_lower = (line1_m*crossroad1_x_lower)+line1_b
-    #  Line 2
-    if line2_m < m_lower_bound or line2_m > m_upper_bound:
-        if line2_m > 0:
-            crossroad2_y_upper = y+6
-            crossroad2_y_lower = y-6
-        else:
-            crossroad2_y_upper = y-6
-            crossroad2_y_lower = y+6 
-        crossroad2_x_upper = (crossroad2_y_upper - line2_b) / line2_m
-        crossroad2_x_lower = (crossroad2_y_lower - line2_b) / line2_m
-    else:
-        crossroad2_x_upper = x+6
-        crossroad2_x_lower = x-6
-        crossroad2_y_upper = (line2_m*crossroad2_x_upper)+line2_b
-        crossroad2_y_lower = (line2_m*crossroad2_x_lower)+line2_b 
-        
-    #  Add crossroad coords to dictionary, lower line then upper line
-    intersect_crossroads[crossroad_tag] = [[crossroad1_x_upper,crossroad1_y_upper,
-                                            crossroad1_x_lower,crossroad1_y_lower],
-                                           
-                                           [crossroad2_x_upper,crossroad2_y_upper,
-                                            crossroad2_x_lower,crossroad2_y_lower]]
-
-    #  Draw initial crossroad line
-    draw.create_line(crossroad2_x_upper, crossroad2_y_upper,
-                     crossroad2_x_lower, crossroad2_y_lower,
-                         fill=linecolor, width=linewidth, tags = crossroad_tag)
-
-    #  Record current start/end coordinates for crossroad line
-    crossroad_start_end[crossroad_tag] = [crossroad2_x_upper,
-                                          crossroad2_y_upper,
-                                          crossroad2_x_lower,
-                                          crossroad2_y_lower]
-
-    #  Add initial bridge values to knot_coords
-    #  Identify all intersects along the given line and order them
-    bridge_intersects = line2_coords[1:-1]
-
-    #  Sort intersects based on orientation of line
-    if line_start_coords[line2_num][0] > line_end_coords[line2_num][0]:
-        #  Start point of line is higher than end point
-        bridge_intersects = sorted(bridge_intersects, reverse = True)
-    else:
-        bridge_intersects = sorted(bridge_intersects)
-        
-    #  Identify exact index value at which to insert ordered bridge coords
-    bridge_index = (line2_num + (len(intersected_list)*4) +1)
-
-    #  Store locations and order of intersects to use for later indexing
-    if line2_num not in intersected_list:
-        intersected_list.append(line2_num)
-
-    #  Calculate ordered bridge coords
-    bridge_coords = []
-    for coord in bridge_intersects:
-        bridge_coord_list = calculate_bridge_coords(line_start_coords[line2_num],
-                                                    line_end_coords[line2_num],
-                                                    coord[0], coord[1], line2_m, line2_b)
-        bridge_coords.append(bridge_coord_list)
-
-    #  Insert bridge coords into knot_coords
-    for bridge in bridge_coords:
-        for coord in bridge:   #  was bridge[::-1]
-            knot_coords.insert(bridge_index, coord)
-            #bridge_index +=1
-
-#  Update currently existing crossroads and modify bridge coords
-def update_crossroads(x,y, closure = False):
-    #  Generate tag
-    if closure:
-        crossroad_tag = str("closure_crossroad_" + str(x) + "_" + str(y))
-    else:
-        crossroad_tag = str("crossroad_" + str(x) + "_" + str(y))
-    
-    #  Delete current crossroad line
-    draw.delete(crossroad_tag)
-    
-    #  Retrieve the current start/end coordinates
-    current_coords = crossroad_start_end.get(crossroad_tag)
-    current_x_upper = current_coords[0]
-    current_y_upper = current_coords[1]
-    current_x_lower = current_coords[2]
-    current_y_lower = current_coords[3]
-    
-    #  Retrieve both possible line positions
-    possible_positions = intersect_crossroads.get(crossroad_tag)
-    
-    #  Change line to opposite of current position and update start/end dict
-    if (current_x_upper == possible_positions[0][0] and
-        current_y_upper == possible_positions[0][1] and
-        current_x_lower == possible_positions[0][2] and
-        current_y_lower == possible_positions[0][3]):
-        draw.create_line(possible_positions[1][0], possible_positions[1][1],
-                         possible_positions[1][2], possible_positions[1][3],
-                         fill=linecolor, width=linewidth, tags = crossroad_tag)
-        crossroad_start_end[crossroad_tag] = (possible_positions[1][0],
-                                              possible_positions[1][1],
-                                              possible_positions[1][2],
-                                              possible_positions[1][3])
-    else:
-        draw.create_line(possible_positions[0][0], possible_positions[0][1],
-                         possible_positions[0][2], possible_positions[0][3],
-                         fill=linecolor, width=linewidth, tags = crossroad_tag)
-        crossroad_start_end[crossroad_tag] = (possible_positions[0][0],
-                                              possible_positions[0][1],
-                                              possible_positions[0][2],
-                                              possible_positions[0][3])
-    
-
-    #  Modify z-value, change to opposite
-    line_tags = intersect_node_dict.get((x, y))
-    tag1_num = line_tags[1]  # bottom line/ line being intersected   #  WAS line_tags[0]
-    if closure:
-        if node_coords[-1][2] == -1:
-            node_coords[-1][2] = 1
-        else:
-            node_coords[-1][2] = -1
-            
-##        if node_coords[tag1_num][2] == -1:
-##            #node_coords[tag1_num][2] = 1
-##            node_coords[-1][2] = -1
-##        else:
-##            node_coords[tag1_num][2] = -1
-##            node_coords[-1][2] = 1
-    else:
-        tag2_num = line_tags[0]  # top line / line intersecting   #  WAS line_tags[1]
-        if node_coords[tag1_num][2] == -1 and node_coords[tag2_num][2] == 1:
-            node_coords[tag1_num][2] = 1
-            node_coords[tag2_num][2] = -1
-        else:
-            node_coords[tag1_num][2] = -1
-            node_coords[tag2_num][2] = 1
-
-
 def display_coords_realtime(event):
     x, y = event.x, event.y
     coords = str(x) + ", " + str(y)
     coords_realtime.config(text=coords)
 
-
 # create function to close program
 def close_window():
     window.destroy()
-
 
 # clear clipboard and copy the currently displayed gauss code
 def copy_gauss(event):
     root.clipboard_clear()
     root.clipboard_append(gc_str)
-
 
 # open file to save data
 def open_file(event):
