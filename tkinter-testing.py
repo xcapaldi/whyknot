@@ -103,6 +103,7 @@ def definebridge(xintersect,yintersect,slope,bridgewidth,bridgeheight):
 nodetags=[] # x, y
 bridgetags=[] # xbounds, ybounds, (z?)
 linetags=[] # xbounds, ybounds, (slope?)
+closuretag = None # xbounds, ybounds
 
 # graphical variables
 canvasbackground = "#d9d9d9"
@@ -110,6 +111,7 @@ noderadius = 5
 nodecolor = "#ce0000"
 linethickness = 2
 linecolor = "#5a79a5"
+closurecolor = "#96439d"
 activeline = "#ffcc00"
 
 # function to extract information from tags
@@ -133,9 +135,15 @@ def drawnode(x, y, radius, color):
     tags=tag)
     nodetags.append(tag)
 
-def drawline(x0, y0, x, y, thickness, color):
-    tag = "line_" + str(x0) + "_" + str(x) + "_" + str(y0) + "_" + str(y)
+def drawline(x0, y0, x, y, thickness, color, type="line"):
+    # we need to make closuretag global to modify it here
+    global  closuretag
+    tag = type+ "_" + str(x0) + "_" + str(x) + "_" + str(y0) + "_" + str(y)
     canvas.create_line(x0, y0, x, y, fill = color, width = thickness, tags=tag)
+    if type == "line":
+        linetags.append(tag)
+    elif type == "closure":
+        closuretag = tag
 
 # main drawing function
 def drawsegment(x,y):
@@ -148,6 +156,17 @@ def drawsegment(x,y):
         # raise the nodes to the top of the canvas so they are drawn over the lines
         canvas.tag_raise(nodetags[-1])
         canvas.tag_raise(nodetags[-2])
+
+def drawclosure():
+    # delete previous closure line if it exists
+    if closuretag != None:
+        canvas.delete(closuretag)
+    # check if there are at least three nodes so that a closure line is appropriate
+    if len(nodetags) > 2:
+        # find coordinates of first node
+        firstnode = extracttaginfo(nodetags[0])
+        lastnode = extracttaginfo(nodetags[-1])
+        drawline(float(firstnode[0]),float(firstnode[1]),float(lastnode[0]),float(lastnode[1]),linethickness,closurecolor,type="closure")
 
 def canvasinteract(event):
     # capture mouse location
@@ -167,6 +186,7 @@ def canvasinteract(event):
     # otherwise just draw a new line segment
     else:
         drawsegment(x,y)
+        drawclosure()
 
 # TODO TODO TODO
 
@@ -204,7 +224,7 @@ title = tk.Label(interfaceframe, text="WhyKnot", font=("Helvetica", 18))
 title.grid(row=0, columnspan=2)
 
 # event handlers
-canvas.bind("<Button-1>", drawsegment, add="+")
+canvas.bind("<Button-1>", canvasinteract, add="+")
 
 # begin progam main loop
 root.mainloop()
