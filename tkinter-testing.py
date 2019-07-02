@@ -142,19 +142,18 @@ def potentialintersection(xbound,ybound,linearray):
     return potintersections
 
 # define bounds of bridge
-def definebridge(xintersect,yintersect,slope,bridgewidth,bridgeheight):
+def definebridge(xintersect,yintersect,slope,radius,bridgeheight):
     # slope represents the top line
-    halfbridge = bridgewidth/2
     # if top line is vertical
     if slope == None:
         x = 0
-        y = halfbridge
+        y = radius
     # else if top line has an angle from vertical
     else:
         # find angle from slope
         angle = np.arctan(slope)
-        x = halfbridge*np.cos(angle)
-        y = halfbridge*np.sin(angle)
+        x = radius*np.cos(angle)
+        y = radius*np.sin(angle)
     bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
     return bridge
 
@@ -174,6 +173,7 @@ linethickness = 2
 linecolor = "#5a79a5"
 closurecolor = "#96439d"
 activenode= "#000000"
+bridgeheight=1
 
 # function to extract information from tags
 def extracttaginfo(tag):
@@ -266,8 +266,10 @@ def drawclosure():
         lastnode = extracttaginfo(nodetags[-1])
         drawline(firstnode[0],firstnode[1],lastnode[0],lastnode[1],linethickness,closurecolor,type="closure")
 
-def drawbridge(x,y):
+def drawbridge(x,y,slope):
     drawnode(x,y,noderadius,canvasbackground,type="bridge",activecolor=activenode)
+    bridge = definebridge(x,y,slope,noderadius,bridgeheight)
+    drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridge")
 
 def drawintersections(x0, y0, x, y):
     # define the line we are checking for intersections
@@ -278,7 +280,7 @@ def drawintersections(x0, y0, x, y):
     intersections = checklines(lines, drawnline)
     # draw a bridge for each intersection
     for i in intersections:
-        drawbridge(i[0],i[1])
+        drawbridge(i[0],i[1],drawnline[2])
 
 def canvasinteract(event):
     # capture mouse location
