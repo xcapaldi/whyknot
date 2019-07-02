@@ -178,10 +178,10 @@ bridgeheight=1
 # function to extract information from tags
 def extracttaginfo(tag):
     splittag = tag.split("_")
-    if splittag[0]==("node"):
-        # return [x, y]
-        strtag = splittag[1:3]
-        numtags = 2
+    if splittag[0]==("node") or splittag[0]==("bridge"):
+        # return [x, y, z]
+        strtag = splittag[1:4]
+        numtags = 3
     # for all other cases
     else:
         # return [x0, y0, x, y]
@@ -204,6 +204,22 @@ def extractlines(taglist):
         lines.append(defineline(linecoords[0],linecoords[2],linecoords[1],linecoords[3]))
     return lines
 
+# extract 3D coordinate information from tags
+def extractcoords():
+    numtags = len(nodetags)
+    coords=[[0,0,0]]*(numtags+2)
+    for c in range(numtags):
+        coords[c+1]=extracttaginfo(nodetags[c])
+    # add a bridge to first and last node so that closure goes below everything else
+    if numtags > 1:
+        # first copy first and last node
+        coords[0] = extracttaginfo(nodetags[0])
+        coords[-1] = extracttaginfo(nodetags[numtags-1])
+        # then change the z to a negative value
+        coords[0][2]=-1
+        coords[-1][2]=-1
+    return coords
+
 # check particular line for intersections against all other lines
 # takes in the array of lines produced in extractlines()
 def checklines(linearray, lineofinterest):
@@ -224,13 +240,14 @@ def checklines(linearray, lineofinterest):
     return intersections
 
 # function to draw nodes
-def drawnode(x, y, radius, color, type="node", activecolor=nodecolor):
-    tag = type + "_" + str(x) + "_" + str(y)
+def drawnode(x, y, z, radius, color, type="node", activecolor=nodecolor):
+    tag = type + "_" + str(x) + "_" + str(y) + "_" + str(z)
     canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, activefill=activecolor, width=0, tags=tag)
-    if type == "node":
-        nodetags.append(tag)
-    elif type == "bridge":
-        bridgetags.append(tag)
+    nodetags.append(tag)
+#    if type == "node":
+#        nodetags.append(tag)
+#    elif type == "bridge":
+#        bridgetags.append(tag)
 
 def drawline(x0, y0, x, y, thickness, color, type="line"):
     # we need to make closuretag global to modify it here
@@ -242,18 +259,26 @@ def drawline(x0, y0, x, y, thickness, color, type="line"):
         drawintersections(x0, y0, x, y)
     elif type == "closure":
         closuretag = tag
-
+#        drawintersections(x0, y0, x, y)
+#    elif type == "bridge":
+    
 # main drawing function
 def drawsegment(x,y):
-    drawnode(x,y,noderadius,nodecolor)
+    # number of nodes
+    numnodes = len(nodetags)
     # check if there is an initial node
-    if len(nodetags)!=1:
+    if numnodes!=0:
         # use use the coordinates of the previous node
-        previousnode = extracttaginfo(nodetags[-2])
+        previousnode = extracttaginfo(nodetags[-1])
         drawline(previousnode[0],previousnode[1],x,y,linethickness,linecolor)
+
+        drawnode(x,y,0,noderadius,nodecolor)
         # raise the nodes to the top of the canvas so they are drawn over the lines
         canvas.tag_raise(nodetags[-1])
-        canvas.tag_raise(nodetags[-2])
+        canvas.tag_raise(nodetags[numnodes-1])
+    # otherwise just draw the initial node
+    else:
+        drawnode(x,y,0,noderadius,nodecolor)
 
 def drawclosure():
     # delete previous closure line if it exists
@@ -266,21 +291,25 @@ def drawclosure():
         lastnode = extracttaginfo(nodetags[-1])
         drawline(firstnode[0],firstnode[1],lastnode[0],lastnode[1],linethickness,closurecolor,type="closure")
 
-def drawbridge(x,y,slope):
-    drawnode(x,y,noderadius,canvasbackground,type="bridge",activecolor=activenode)
+def drawbridge(x,y,z,slope):
+    drawnode(x,y,z,noderadius,canvasbackground,type="bridge",activecolor=activenode)
     bridge = definebridge(x,y,slope,noderadius,bridgeheight)
     drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridge")
 
-def drawintersections(x0, y0, x, y):
+def drawintersections(x0, y0, x, y, type="line"):
     # define the line we are checking for intersections
     drawnline = defineline(x0, y0, x, y)
     # extract all other line data
     lines=extractlines(linetags)
     # check for intersections
     intersections = checklines(lines, drawnline)
+#    if type == "line":
+#        color = linecolor
+#    elif type == "closure":
+#        color = closurecolor
     # draw a bridge for each intersection
     for i in intersections:
-        drawbridge(i[0],i[1],drawnline[2])
+        drawbridge(i[0],i[1],1,drawnline[2])
 
 def canvasinteract(event):
     # capture mouse location
@@ -301,6 +330,7 @@ def canvasinteract(event):
     else:
         drawsegment(x,y)
         drawclosure()
+        print(extractcoords())
 
 # TODO TODO TODO
 
