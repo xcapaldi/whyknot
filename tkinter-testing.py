@@ -18,42 +18,103 @@ def findyintercept(x,y,m):
     b = y - (m * x)
     return b
 
+# check if intersect between two lines falls within their range
+def checkrange(xbound1,xbound2,ybound1,ybound2,intersect):
+    line1x, line2x, line1y, line2y = [False]*4
+    # check xrange of first line
+    if intersect[0] > min(xbound1) and intersect[0] < max(xbound1):
+        line1x = True
+    # check x range of second line
+    if  intersect[0] > min(xbound2) and intersect[0] < max(xbound2):
+        line2x = True
+    # check y range of first line
+    if intersect[1] > min(ybound1) and intersect[1] < max(ybound1):
+        line1y = True
+    # check y range of second line
+    if intersect[1] > min(ybound2) and intersect[1] < max(ybound2):
+        line2y = True
+    if line1x and line2x and line1y and line2y == True:
+        return True
+    else:
+        return False
+
 # check if two lines intersect
 def checkintersect(xbound1,xbound2,ybound1,ybound2,slope1,slope2):
-    # check if we have overlap in x range first
-    if max(xbound1) > min(xbound2) or max(xbound2) > min(xbound1):
-        # then check if we have overlap in y range
-        if max(ybound1) > min(ybound2) or max(ybound2) > min(ybound1):
-           # then check if line 1 is vertical
-           if slope1 == None:
-               # in this case, the two lines intersect everywhere
-               if slope2 == None:
-                   # technically not correct but for the purposes of this script it will
-                   # suffice
-                   return None 
-               # otherwise, only line 1 is vertical
-               else:
-                   b2=findyintercept(xbound2[0],ybound2[0],slope2)
-                   xintersect = xbound1[0]
-                   yintersect = slope2 * xintersect + b2
-                   return [xintersect, yintersect]
-           elif slope2 == None:
-               # the previous conditional already checked if line 1 was vertical
-               b1=findyintercept(xbound1[0],ybound1[0],slope1)
-               xintersect = xbound2[0]
-               yintersect = slope1 * xintersect + b1
-               return [xintersect, yintersect]
-           # if neither line is vertical
-           else:
-               b1=findyintercept(xbound1[0],ybound1[0],slope1)
-               b2=findyintercept(xbound2[0],ybound2[0],slope2)
-               xintersect = (b2-b1)/(slope1-slope2)
-               yintersect = slope1 * xintersect + b1
-               return [xintersect, yintersect]
+    #check if line 1 is vertical
+    if slope1 == None:
+        # in this case, the two lines intersect everwhere
+        if slope2 == None:
+            # not correct but sufficient for the purposes of this script
+            return None
+        # otherwise, only line 1 is vertical
         else:
-            return None # outside y range
+            b2=findyintercept(xbound2[0],ybound2[0],slope2)
+            xintersect= xbound1[0]
+            yintersect= slope2 * xintersect + b2
+            # check if intersect in range
+            if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+                return [xintersect, yintersect]
+            else:
+                return None
+    # check if line 2 is vertical
+    elif slope2 == None:
+        # previous conditial checked if line 1 was vertical
+        b1=findyintercept(xbound1[0],ybound1[0],slope1)
+        xintersect= xbound2[0]
+        yintersect= slope1 * xintersect + b1
+        # check if intersect in range
+        if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+            return [xintersect, yintersect]
+        else:
+            return None
+    # if neither line is vertical
     else:
-        return None # outside x range
+        b1=findyintercept(xbound1[0],ybound1[0],slope1)
+        b2=findyintercept(xbound2[0],ybound2[0],slope2)
+        xintersect= (b2-b1)/(slope1-slope2)
+        yintersect= slope1 * xintersect + b1
+        # check if intersect in range
+        if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+            return [xintersect, yintersect]
+        else:
+            return None
+
+# check if two lines intersect
+#def checkintersect(xbound1,xbound2,ybound1,ybound2,slope1,slope2):
+#    # check if we have overlap in x range first
+#    if max(xbound1) > min(xbound2) and min(xbound1) < max(xbound2):
+#        # then check if we have overlap in y range
+#        if max(ybound1) > min(ybound2) and min(ybound1) < max(ybound2):
+#            # then check if line 1 is vertical
+#            if slope1 == None:
+#                # in this case, the two lines intersect everywhere
+#                if slope2 == None:
+#                    # technically not correct but for the purposes of this script it will
+#                    # suffice
+#                    return None 
+#                # otherwise, only line 1 is vertical
+#                else:
+#                    b2=findyintercept(xbound2[0],ybound2[0],slope2)
+#                    xintersect = xbound1[0]
+#                    yintersect = slope2 * xintersect + b2
+#                    return [xintersect, yintersect]
+#            elif slope2 == None:
+#                # the previous conditional already checked if line 1 was vertical
+#                b1=findyintercept(xbound1[0],ybound1[0],slope1)
+#                xintersect = xbound2[0]
+#                yintersect = slope1 * xintersect + b1
+#                return [xintersect, yintersect]
+#            # if neither line is vertical
+#            else:
+#                b1=findyintercept(xbound1[0],ybound1[0],slope1)
+#                b2=findyintercept(xbound2[0],ybound2[0],slope2)
+#                xintersect = (b2-b1)/(slope1-slope2)
+#                yintersect = slope1 * xintersect + b1
+#                return [xintersect, yintersect]
+#        else:
+#            return None # outside y range
+#    else:
+#        return None # outside x range
 
 # determine which lines to check for intersection
 # this function ignores the end point of the lines which is good for our purposes
@@ -121,15 +182,11 @@ def extracttaginfo(tag):
         # return [x, y]
         strtag = splittag[1:3]
         numtags = 2
-    elif splittag[0]==("line") or ("closure"):
+    # for all other cases
+    else:
         # return [x0, y0, x, y]
         strtag = splittag[1:5]
         numtags = 4
-    # otherwise it is a bridge
-    else:
-        # return [x0, y0, x, y, z]
-        strtag = splittag[1:6]
-        numtags = 5
     # create empty array to store floats
     floattag = [0] * numtags
     # convert to float
@@ -138,13 +195,13 @@ def extracttaginfo(tag):
     return floattag
 
 # extract all line information
-def extractlines():
+def extractlines(taglist):
     # this will contain the mathematically defined lines
     # [xbound, ybound, slope]
     lines = []
-    for line in linetags:
+    for line in taglist:
         linecoords = extracttaginfo(line)
-        lines.append(defineline(linecoords[0],linecoords[1],linecoords[2],linecoords[3]))
+        lines.append(defineline(linecoords[0],linecoords[2],linecoords[1],linecoords[3]))
     return lines
 
 # check particular line for intersections against all other lines
@@ -182,9 +239,9 @@ def drawline(x0, y0, x, y, thickness, color, type="line"):
     canvas.create_line(x0, y0, x, y, fill = color, width = thickness, tags=tag)
     if type == "line":
         linetags.append(tag)
+        drawintersections(x0, y0, x, y)
     elif type == "closure":
         closuretag = tag
-    drawintersections(x0, y0, x, y)
 
 # main drawing function
 def drawsegment(x,y):
@@ -216,7 +273,7 @@ def drawintersections(x0, y0, x, y):
     # define the line we are checking for intersections
     drawnline = defineline(x0, y0, x, y)
     # extract all other line data
-    lines=extractlines()
+    lines=extractlines(linetags)
     # check for intersections
     intersections = checklines(lines, drawnline)
     # draw a bridge for each intersection
