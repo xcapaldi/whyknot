@@ -206,18 +206,43 @@ def extractlines(taglist):
 
 # extract 3D coordinate information from tags
 def extractcoords():
+    # initialize a bridge counter
+    bridgeloc = []
     numtags = len(nodetags)
     coords=[[0,0,0]]*(numtags+2)
     for c in range(numtags):
         coords[c+1]=extracttaginfo(nodetags[c])
+        # check if the tag is a bridge
+        if coords[c+1][2] == bridgeheight:
+            #print("bridge detected!")
+            bridgeloc.append(c+1)
+    # iterate through array and insert bridge elements
+    for b in range(len(bridgeloc)):
+        bridgetag = extracttaginfo(bridgetags[b])
+        loc = bridgeloc[b]+(4*(b))
+        # need to determine which end of the bridge falls first
+        # TODO this is still not working
+        prevnode = coords[loc-1] #x,y,z
+        distance1 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[0]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[2]))**2)
+        distance2 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[1]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[3]))**2)
+        if distance1 < distance2:
+            bridgestart = [bridgetag[0],bridgetag[2]]
+            bridgeend = [bridgetag[1],bridgetag[3]]
+        else:
+            bridgestart = [bridgetag[1],bridgetag[3]]
+            bridgeend = [bridgetag[0],bridgetag[2]]
+        coords.insert(loc,[bridgestart[0],bridgestart[1],0])
+        coords.insert(loc+1,[bridgestart[0],bridgestart[1],bridgeheight])
+        coords.insert(loc+3,[bridgeend[0],bridgeend[1],bridgeheight])
+        coords.insert(loc+4,[bridgeend[0],bridgeend[1],0])
     # add a bridge to first and last node so that closure goes below everything else
     if numtags > 1:
         # first copy first and last node
         coords[0] = extracttaginfo(nodetags[0])
         coords[-1] = extracttaginfo(nodetags[numtags-1])
-        # then change the z to a negative value
-        coords[0][2]=-1
-        coords[-1][2]=-1
+        # then change the z to a positive higher value
+        coords[0][2]=2.
+        coords[-1][2]=2.
     return coords
 
 # check particular line for intersections against all other lines
@@ -249,7 +274,7 @@ def drawnode(x, y, z, radius, color, type="node", activecolor=nodecolor):
 #    elif type == "bridge":
 #        bridgetags.append(tag)
 
-def drawline(x0, y0, x, y, thickness, color, type="line"):
+def drawline(x0, y0, x, y, thickness, color, type="line", bridgeinfo = None):
     # we need to make closuretag global to modify it here
     global  closuretag
     tag = type + "_" + str(x0) + "_" + str(x) + "_" + str(y0) + "_" + str(y)
@@ -260,8 +285,10 @@ def drawline(x0, y0, x, y, thickness, color, type="line"):
     elif type == "closure":
         closuretag = tag
 #        drawintersections(x0, y0, x, y)
-#    elif type == "bridge":
-    
+    elif type == "bridgeline":
+        tag += "_node_"+str(bridgeinfo[0])+"_"+str(bridgeinfo[1])+"_"+str(bridgeinfo[2])
+        bridgetags.append(tag)
+
 # main drawing function
 def drawsegment(x,y):
     # number of nodes
@@ -294,7 +321,7 @@ def drawclosure():
 def drawbridge(x,y,z,slope):
     drawnode(x,y,z,noderadius,canvasbackground,type="bridge",activecolor=activenode)
     bridge = definebridge(x,y,slope,noderadius,bridgeheight)
-    drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridge")
+    drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridgeline",bridgeinfo=[x,y,z])
 
 def drawintersections(x0, y0, x, y, type="line"):
     # define the line we are checking for intersections
@@ -309,7 +336,10 @@ def drawintersections(x0, y0, x, y, type="line"):
 #        color = closurecolor
     # draw a bridge for each intersection
     for i in intersections:
-        drawbridge(i[0],i[1],1,drawnline[2])
+        drawbridge(i[0],i[1],bridgeheight,drawnline[2])
+# just for testing
+import numpy as np
+from pyknotid.spacecurves import Knot
 
 def canvasinteract(event):
     # capture mouse location
@@ -330,7 +360,14 @@ def canvasinteract(event):
     else:
         drawsegment(x,y)
         drawclosure()
-        print(extractcoords())
+        coordinates = extractcoords()
+        ncoords = np.array(coordinates)
+        print(ncoords)
+        k = Knot(ncoords)
+        k.plot(mode='matplotlib')
+        print("bridges")
+        print(bridgetags)
+
 
 # TODO TODO TODO
 
