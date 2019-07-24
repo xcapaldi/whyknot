@@ -105,7 +105,7 @@ def potentialintersection(xbound,ybound,linearray):
     return potintersections
 
 # define bounds of bridge
-def definebridge(xintersect,yintersect,slope,radius,bridgeheight):
+def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
     # slope represents the top line
     # if top line is vertical
     if slope == None:
@@ -117,7 +117,32 @@ def definebridge(xintersect,yintersect,slope,radius,bridgeheight):
         angle = np.arctan(slope)
         x = radius*np.cos(angle)
         y = radius*np.sin(angle)
-    bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+    # now we need to use pythagorean theorem to determine which end of the bridge to
+    # start drawing
+    edge1 = [xintersect-x,yintersect-y]
+    edge2 = [xintersect+x,yintersect+y]
+    distedge1 = np.sqrt((np.abs(x0)-np.abs(edge1[0]))**2+(np.abs(y0)-np.abs(edge1[1]))**2)
+    distedge2 = np.sqrt((np.abs(x0)-np.abs(edge2[0]))**2+(np.abs(y0)-np.abs(edge2[1]))**2)
+    print('angle' + str(angle))
+    print('x' + str(x))
+    print('y' + str(y))
+    print('edge1')
+    print(edge1)
+    print('edge2')
+    print(edge2)
+    print('distedge1')
+    print(distedge1)
+    print('distedge2')
+    print(distedge2)
+    print('x0' + str(x0))
+    print('yo' + str(y0))
+    if distedge1 < distedge2:
+        bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+    else:
+        bridge=[[xintersect+x,xintersect-x],[yintersect+y,yintersect-y],bridgeheight]
+
+    print('bridge')
+    print(bridge)
     return bridge
 
 ### DRAWING ###
@@ -185,15 +210,17 @@ def extractcoords():
         loc = bridgeloc[b]+(4*(b))
         # need to determine which end of the bridge falls first
         # TODO this is still not working
-        prevnode = coords[loc-1] #x,y,z
-        distance1 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[0]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[2]))**2)
-        distance2 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[1]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[3]))**2)
-        if distance1 < distance2:
-            bridgestart = [bridgetag[0],bridgetag[2]]
-            bridgeend = [bridgetag[1],bridgetag[3]]
-        else:
-            bridgestart = [bridgetag[1],bridgetag[3]]
-            bridgeend = [bridgetag[0],bridgetag[2]]
+        #prevnode = coords[loc-1] #x,y,z
+        #distance1 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[0]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[2]))**2)
+        #distance2 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[1]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[3]))**2)
+        #if distance1 < distance2:
+        #    bridgestart = [bridgetag[0],bridgetag[2]]
+        #    bridgeend = [bridgetag[1],bridgetag[3]]
+        #else:
+        #    bridgestart = [bridgetag[1],bridgetag[3]]
+        #    bridgeend = [bridgetag[0],bridgetag[2]]
+        bridgestart= [bridgetag[0],bridgetag[2]]
+        bridgeend=[bridgetag[1],bridgetag[3]]
         coords.insert(loc,[bridgestart[0],bridgestart[1],0])
         coords.insert(loc+1,[bridgestart[0],bridgestart[1],bridgeheight])
         coords.insert(loc+3,[bridgeend[0],bridgeend[1],bridgeheight])
@@ -282,9 +309,9 @@ def drawclosure():
         lastnode = extracttaginfo(nodetags[-1])
         drawline(firstnode[0],firstnode[1],lastnode[0],lastnode[1],linethickness,closurecolor,type="closure")
 
-def drawbridge(x,y,z,slope):
+def drawbridge(x,y,z,x0,y0,slope):
     drawnode(x,y,z,noderadius,canvasbackground,type="bridge",activecolor=activenode)
-    bridge = definebridge(x,y,slope,noderadius,bridgeheight)
+    bridge = definebridge(x,y,slope,x0,y0,noderadius,bridgeheight)
     drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridgeline",bridgeinfo=[x,y,z])
 
 def drawintersections(x0, y0, x, y, type="line"):
@@ -300,7 +327,7 @@ def drawintersections(x0, y0, x, y, type="line"):
 #        color = closurecolor
     # draw a bridge for each intersection
     for i in intersections:
-        drawbridge(i[0],i[1],bridgeheight,drawnline[2])
+        drawbridge(i[0],i[1],bridgeheight,x0,y0,drawnline[2])
 # just for testing
 import numpy as np
 from pyknotid.spacecurves import Knot
