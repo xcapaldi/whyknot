@@ -104,6 +104,19 @@ def potentialintersection(xbound,ybound,linearray):
                 potintersections.append(line)
     return potintersections
 
+# determine which of point in an array is closer to the point of interest
+def pythagdistance(x0,y0,points):
+    # points should be an array of [x,y] coordinates
+    distlist = []
+    print('points')
+    print(points)
+    for p in points:
+        distlist.append(np.sqrt((np.abs(x0)-np.abs(p[0]))**2+(np.abs(y0)-np.abs(p[1]))**2))
+    print('distlist')
+    print(distlist)
+    print(points[distlist.index(min(distlist))])
+    return points[distlist.index(min(distlist))]
+
 # define bounds of bridge
 def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
     # slope represents the top line
@@ -121,28 +134,17 @@ def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
     # start drawing
     edge1 = [xintersect-x,yintersect-y]
     edge2 = [xintersect+x,yintersect+y]
-    distedge1 = np.sqrt((np.abs(x0)-np.abs(edge1[0]))**2+(np.abs(y0)-np.abs(edge1[1]))**2)
-    distedge2 = np.sqrt((np.abs(x0)-np.abs(edge2[0]))**2+(np.abs(y0)-np.abs(edge2[1]))**2)
-    print('angle' + str(angle))
-    print('x' + str(x))
-    print('y' + str(y))
-    print('edge1')
-    print(edge1)
-    print('edge2')
-    print(edge2)
-    print('distedge1')
-    print(distedge1)
-    print('distedge2')
-    print(distedge2)
-    print('x0' + str(x0))
-    print('yo' + str(y0))
-    if distedge1 < distedge2:
-        bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+    #distedge1 = np.sqrt((np.abs(x0)-np.abs(edge1[0]))**2+(np.abs(y0)-np.abs(edge1[1]))**2)
+    #distedge2 = np.sqrt((np.abs(x0)-np.abs(edge2[0]))**2+(np.abs(y0)-np.abs(edge2[1]))**2)
+    #if distedge1 < distedge2:
+    #    bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+    #else:
+    #    bridge=[[xintersect+x,xintersect-x],[yintersect+y,yintersect-y],bridgeheight]
+    closeedge=pythagdistance(x0,y0,[edge1,edge2])
+    if closeedge == edge1:
+        bridge=[[edge1[0],edge2[0]],[edge1[1],edge2[1]],bridgeheight]
     else:
-        bridge=[[xintersect+x,xintersect-x],[yintersect+y,yintersect-y],bridgeheight]
-
-    print('bridge')
-    print(bridge)
+        bridge=[[edge2[0],edge1[0]],[edge2[1],edge1[1]],bridgeheight]
     return bridge
 
 ### DRAWING ###
@@ -208,7 +210,7 @@ def extractcoords():
     for b in range(len(bridgeloc)):
         bridgetag = extracttaginfo(bridgetags[b])
         loc = bridgeloc[b]+(4*(b))
-        # need to determine which end of the bridge falls first
+        # need to determine which bridge falls first
         # TODO this is still not working
         #prevnode = coords[loc-1] #x,y,z
         #distance1 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[0]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[2]))**2)
@@ -325,8 +327,19 @@ def drawintersections(x0, y0, x, y, type="line"):
 #        color = linecolor
 #    elif type == "closure":
 #        color = closurecolor
+    intersectnumber = len(intersections)
+    orderedintersects = [0]*intersectnumber
+    # check which intersection should fall first
+    for i in range(intersectnumber):
+        # first closest
+        closestintersect = pythagdistance(x0,y0,intersections)
+        # append to ordered list
+        orderedintersects[i]=closestintersect
+        # delete from initial intersection list
+        del(intersections[intersections.index(closestintersect)])
+    
     # draw a bridge for each intersection
-    for i in intersections:
+    for i in orderedintersects:
         drawbridge(i[0],i[1],bridgeheight,x0,y0,drawnline[2])
 # just for testing
 import numpy as np
