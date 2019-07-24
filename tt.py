@@ -130,7 +130,7 @@ closuretag = None # xbounds, ybounds
 
 # graphical variables
 canvasbackground = "#d9d9d9"
-noderadius = 5
+noderadius = 10
 nodecolor = "#ce0000"
 linethickness = 2
 linecolor = "#5a79a5"
@@ -215,14 +215,13 @@ def checklines(linearray, lineofinterest):
     # [xintersect, yintersect]
     intersections = []
     for line in linearray:
-        intersect = checkintersect(line[0],lineofinterest[0],line[1],lineofinterest[1],line[2],lineofinterest[2])
         # we don't want a line to find intersections with itself
-        #if line == lineofinterest:
-        #    intersect = None
-        #else:
+        if line == lineofinterest:
+            intersect = None
+        else:
             # otherwise we check for intersections with all other lines
             # in the future we may want to implement a limit on which lines to check
-        #    intersect = checkintersect(line[0],lineofinterest[0],line[1],lineofinterest[1],line[2],lineofinterest[2])
+            intersect = checkintersect(line[0],lineofinterest[0],line[1],lineofinterest[1],line[2],lineofinterest[2])
         # add an intersection if it exists
         if intersect != None:
             intersections.append(intersect)
@@ -291,7 +290,7 @@ def drawintersections(x0, y0, x, y, type="line"):
     # define the line we are checking for intersections
     drawnline = defineline(x0, y0, x, y)
     # extract all other line data
-    lines=extractlines(linetags[:-2])
+    lines=extractlines(linetags)
     # check for intersections
     intersections = checklines(lines, drawnline)
 #    if type == "line":
