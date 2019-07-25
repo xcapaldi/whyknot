@@ -347,22 +347,26 @@ def canvasinteract(event):
     # check if anything was enclosed
     if len(tags) > 0:
         for tag in tags:
-            if tag.startwith("line"):
-                # x0,y0,x,y
-                lines.append(defineline(extracttaginfo(tag)))
-            if tag.startwith("bridge"):
+            print(tag)
+            splittag = extracttaginfo(tag)
+            if tag.split("_")[0]==("line"):
+                # x0,x,y0,y
+                lines.append(defineline(splittag[0],splittag[2],splittag[1],splittag[3]))
+            if tag.split("_")[0]==("bridge"):
                 # x,y,z
-                bridgenode = extractaginfo(tag)
-            if tag.startswith("bridgeline"):
-                # get bridge location in array
+                bridgenode = extracttaginfo(tag)
+            if tag.split("_")[0]==("bridgeline"):
                 # this is inefficient and could be remedied by fixing the tag order in
                 # drawline
                 for btag in bridgetags:
                     if btag.startswith(tag):
-                        bridge = btag
+                        # x0,y0,x,y
+                        origbridgetag = extracttaginfo(btag)
+                        bridge =[[origbridgetag[0],origbridgetag[1]],[origbridgetag[2],origbridgetag[3]]]
+                        print('bridge')
+                        print(bridge)
+                        # tag location in array of bridge tags
                         tagloc = bridgetags.index(btag)
-                        print('tagloc' + str(tagloc))
-                        print('btag is ' + btag)
                         # remove previous bridge from canvas
                         canvas.delete(tag)
                         # the bridge line is deleted but its tag still exists
@@ -370,9 +374,35 @@ def canvasinteract(event):
                         # want to calculate the bridge about the node using the two
                         # lines
                         # we calculate both potential bridges manually
-                        bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)
-                        bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)
-                        print("SWITCH BRIDGE")
+                        # returns [[x0,x],[y0,y],z]
+                        bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[0][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)[:-1]
+                        bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)[:-1]
+                        print("lines")
+                        print(lines)
+                        print("bridge1")
+                        print(bridge1)
+                        print("bridge2")
+                        print(bridge2)
+                        # we want the new bridge, not a duplicate of the old one
+                        nodepart="_node_"+str(bridgenode[0])+"_"+str(bridgenode[1])+"_"+str(bridgenode[2])
+                        if bridge1 == bridge:
+                            newtag='bridgeline_'+str(bridge2[0][0])+"_"+str(bridge2[0][1])+"_"+str(bridge2[1][0])+"_"+str(bridge2[1][1])
+                            # draw bridge2
+                            canvas.create_line(bridge2[0][0], bridge2[1][0],bridge2[0][1], bridge2[1][1], fill = linecolor, width = linethickness, tags=newtag)
+                        elif bridge2 == bridge:
+                            newtag='bridgeline_'+str(bridge1[0][0])+"_"+str(bridge1[0][1])+"_"+str(bridge1[1][0])+"_"+str(bridge1[1][1])
+                            # draw bridge
+                            canvas.create_line(bridge1[0][0],bridge1[1][0],bridge1[0][1],bridge1[1][1],fill=linecolor,width=linethickness,tags=newtag)
+                        else:
+                            print("something went wrong")
+                        # replace the tag for the old bridge
+                        bridgetags[tagloc]=newtag+nodepart
+                        print("newbridge")
+                        print(bridgetags[tagloc])
+        coordinates = extractcoords()
+        ncoords=np.array(coordinates)
+        k = Knot(ncoords)
+        k.plot(mode='matplotlib')
     elif len(tags) > 4:
         print('Too many overlapping elements for program to distinguish')
     # otherwise just draw a new line segment
