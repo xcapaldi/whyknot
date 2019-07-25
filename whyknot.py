@@ -432,7 +432,7 @@ def findgausscode(event):
         gcode.config(text=str(gc))
 
 def clearcanvas(event):
-    draw.delete("all")
+    canvas.delete("all")
     nodetags=[] # x, y
     bridgetags=[] # xbounds, ybounds, (z?)
     linetags=[] # xbounds, ybounds, (slope?)
