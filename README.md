@@ -30,8 +30,6 @@ Otherwise just try to comment your work clearly.
 
 ## TODO
 
-* Canvas to draw knots
-* Extract coordinates from drawn knots
-* Interface with pyknotid
-* Save results to txt or csv
-* (3d plots?)
+* Fix bridge switching algorithm
+* Implement 3d plot display
+* Migrate whole system to object oriented interface
