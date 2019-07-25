@@ -1,8 +1,3 @@
-#  WhyKnot
-#  Graphical wrapper for PyKnotID package
-#  Xavier and Luc Capaldi
-
-# import modules
 import tkinter as tk
 import tkinter.filedialog as fd
 import tkinter.messagebox as mb
@@ -14,18 +9,11 @@ import csv
 import os
 
 # set initial values
-x0, y0 = 0, 0
-gc_str = ""
-fileopen = False
-t = sympy.Symbol('t') # for use in displaying polynomial invariant
+gc_str =''
+fileopen=False
+t=sympy.Symbol('t') # for use in displaying polynomial invariant
 
-#  Set line/node graphical defaults
-linewidth = 2
-linecolor = "#a3be8c"
-noderadius = 5
-nodecolor = "#bf616a"
-bridgewidth = 3
-background_color = "#d9d9d9"
+### GENERAL FUNCTIONS ###
 
 # determine equation of line
 def defineline(x1,y1,x2,y2):
@@ -35,50 +23,73 @@ def defineline(x1,y1,x2,y2):
         slope = None
     else:
         slope = (y2-y1)/(x2-x1)
-    return xbound, ybound, slope
+    return [xbound, ybound, slope]
 
 # find the y-intercept of a given line
 def findyintercept(x,y,m):
     b = y - (m * x)
     return b
 
+# check if intersect between two lines falls within their range
+def checkrange(xbound1,xbound2,ybound1,ybound2,intersect):
+    line1x, line2x, line1y, line2y = [False]*4
+    # check xrange of first line
+    if intersect[0] > min(xbound1) and intersect[0] < max(xbound1):
+        line1x = True
+    # check x range of second line
+    if  intersect[0] > min(xbound2) and intersect[0] < max(xbound2):
+        line2x = True
+    # check y range of first line
+    if intersect[1] > min(ybound1) and intersect[1] < max(ybound1):
+        line1y = True
+    # check y range of second line
+    if intersect[1] > min(ybound2) and intersect[1] < max(ybound2):
+        line2y = True
+    if line1x and line2x and line1y and line2y == True:
+        return True
+    else:
+        return False
 
 # check if two lines intersect
 def checkintersect(xbound1,xbound2,ybound1,ybound2,slope1,slope2):
-    # check if we have overlap in x range first
-    if max(xbound1) > min(xbound2) or max(xbound2) > min(xbound1):
-        # then check if we have overlap in y range
-        if max(ybound1) > min(ybound2) or max(ybound2) > min(ybound1):
-           # then check if line 1 is vertical
-           if slope1 == None:
-               # in this case, the two lines intersect everywhere
-               if slope2 == None:
-                   # technically not correct but for the purposes of this script it will
-                   # suffice
-                   return None 
-               # otherwise, only line 1 is vertical
-               else:
-                   b2=findyintercept(xbound2[0],ybound2[0],slope2)
-                   xintersect = xbound1[0]
-                   yintersect = slope2 * xintersect + b2
-                   return xintersect, yintersect
-           elif slope2 == None:
-               # the previous conditional already checked if line 1 was vertical
-               b1=findyintercept(xbound1[0],ybound1[0],slope1)
-               xintersect = xbound2[0]
-               yintersect = slope1 * xintersect + b1
-               return xintersect, yintersect
-           # if neither line is vertical
-           else:
-               b1=findyintercept(xbound1[0],ybound1[0],slope1)
-               b2=findyintercept(xbound2[0],ybound2[0],slope2)
-               xintersect = (b2-b1)/(slope1-slope2)
-               yintersect = slope1 * xintersect + b1
-               return xintersect, yintersect
+    #check if line 1 is vertical
+    if slope1 == None:
+        # in this case, the two lines intersect everwhere
+        if slope2 == None:
+            # not correct but sufficient for the purposes of this script
+            return None
+        # otherwise, only line 1 is vertical
         else:
-            return None # outside y range
+            b2=findyintercept(xbound2[0],ybound2[0],slope2)
+            xintersect= xbound1[0]
+            yintersect= slope2 * xintersect + b2
+            # check if intersect in range
+            if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+                return [xintersect, yintersect]
+            else:
+                return None
+    # check if line 2 is vertical
+    elif slope2 == None:
+        # previous conditial checked if line 1 was vertical
+        b1=findyintercept(xbound1[0],ybound1[0],slope1)
+        xintersect= xbound2[0]
+        yintersect= slope1 * xintersect + b1
+        # check if intersect in range
+        if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+            return [xintersect, yintersect]
+        else:
+            return None
+    # if neither line is vertical
     else:
-        return None # outside x range
+        b1=findyintercept(xbound1[0],ybound1[0],slope1)
+        b2=findyintercept(xbound2[0],ybound2[0],slope2)
+        xintersect= (b2-b1)/(slope1-slope2)
+        yintersect= slope1 * xintersect + b1
+        # check if intersect in range
+        if checkrange(xbound1,xbound2,ybound1,ybound2,[xintersect,yintersect]) == True:
+            return [xintersect, yintersect]
+        else:
+            return None
 
 # determine which lines to check for intersection
 # this function ignores the end point of the lines which is good for our purposes
@@ -105,172 +116,348 @@ def potentialintersection(xbound,ybound,linearray):
                 potintersections.append(line)
     return potintersections
 
+# determine which of point in an array is closer to the point of interest
+def pythagdistance(x0,y0,points):
+    # points should be an array of [x,y] coordinates
+    distlist = []
+    for p in points:
+        distlist.append(np.sqrt((np.abs(x0)-np.abs(p[0]))**2+(np.abs(y0)-np.abs(p[1]))**2))
+    return points[distlist.index(min(distlist))]
 
 # define bounds of bridge
-def definebridge(xintersect,yintersect,slope,bridgewidth,bridgeheight):
+def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
     # slope represents the top line
-    halfbridge = bridgewidth/2
     # if top line is vertical
     if slope == None:
         x = 0
-        y = halfbridge
+        y = radius
     # else if top line has an angle from vertical
     else:
         # find angle from slope
         angle = np.arctan(slope)
-        x = halfbridge*np.cos(angle)
-        y = halfbridge*np.sin(angle)
-    bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
+        x = radius*np.cos(angle)
+        y = radius*np.sin(angle)
+    # now we need to use pythagorean theorem to determine which end of the bridge to
+    # start drawing
+    edge1 = [xintersect-x,yintersect-y]
+    edge2 = [xintersect+x,yintersect+y]
+    closeedge=pythagdistance(x0,y0,[edge1,edge2])
+    if closeedge == edge1:
+        bridge=[[edge1[0],edge2[0]],[edge1[1],edge2[1]],bridgeheight]
+    else:
+        bridge=[[edge2[0],edge1[0]],[edge2[1],edge1[1]],bridgeheight]
     return bridge
 
-#  Draw new lines and nodes based on mouse click event
-def drawline(event):
-    global x0, y0, node_counter, line_counter
-    intersect = False
-    closure = False
-    x, y = event.x, event.y
+### DRAWING ###
 
-    #  Hitbox variable to change crossroad intersect
-    hb = 20
-    #  Check if user clicks on any intersects along normal lines
-    for coord in intersect_coords:
-        #  Create hitbox for over/under intersection switching
-        x_low, x_high = int(coord[0] - hb), int(coord[0] + hb)
-        y_low, y_high = int(coord[1] - hb), int(coord[1] + hb)
-        if x > x_low and x < x_high and y > y_low and y < y_high:
-            intersect = True
-            #  Store which intersection is clicked
-            local_intersect = coord
-    #  Check if user clicks on any interersects along closure line
-    for coord in closure_intersects:
-        #  Create hitbox for over/under intersection switching
-        x_low, x_high = int(coord[0] - hb), int(coord[0] + hb)
-        y_low, y_high = int(coord[1] - hb), int(coord[1] + hb)
-        if x > x_low and x < x_high and y > y_low and y < y_high:
-            intersect = True
-            closure = True
-            #  Store which intersection is clicked
-            local_intersect = coord
-    if intersect == False:
-        #  Generate naming convention for tags
-        node_tag = "node_" + str(node_counter)
-        line_tag = "line_" + str(line_counter)
+# initialize lists to hold tags canvas elements
+nodetags=[] # x, y
+bridgetags=[] # xbounds, ybounds, (z?)
+linetags=[] # xbounds, ybounds, (slope?)
+closuretag = None # xbounds, ybounds
 
-        if x0 == 0 & y0 == 0:
-            draw.create_oval(
-                x - noderadius,
-                y - noderadius,
-                x + noderadius,
-                y + noderadius,
-                fill=nodecolor,
-                width=0,
-                tags=node_tag,
-            )
-            node_counter += 1
-        else:
-            draw.create_line(
-                x0, y0, x, y, fill=linecolor, width=linewidth, tags=line_tag
-            )
-            draw.create_oval(
-                x - noderadius,
-                y - noderadius,
-                x + noderadius,
-                y + noderadius,
-                fill=nodecolor,
-                width=0,
-                tags=node_tag,
-            )
-            node_counter += 1
-            line_counter += 1
+# graphical variables
+canvasbackground = "#d9d9d9"
+noderadius = 5
+nodecolor = "#ce0000"
+linethickness = 2
+linecolor = "#5a79a5"
+closurecolor = "#96439d"
+activenode= "#000000"
+bridgeheight=1
 
-        x0, y0 = x, y
-
-        #  Record info about line and find intersections
-        record_line_info(x, y)
-        if len(node_coords) > 1:
-            line_intersects = calculate_intersect_coords(line_start_coords[-1][0],
-                                                         line_end_coords[-1][0],
-                                                         line_m[-1],
-                                                         b1 = line_b[-1])
-            for i in line_intersects:
-                #  Add coordinates (key) and reference index values to
-                #  dictionary
-                #  i = [x,y, line_num_bot, line_num_top]
-                intersect_node_dict[(i[0], i[1])] = i[2], i[3]
-                intersect_coords.append([i[0], i[1]])
-                #  Update intersections visually
-                create_intersections(i[0], i[1])
+# function to extract information from tags
+def extracttaginfo(tag):
+    splittag = tag.split("_")
+    if splittag[0]==("node") or splittag[0]==("bridge"):
+        # return [x, y, z]
+        strtag = splittag[1:4]
+        numtags = 3
+    # for all other cases
     else:
-        x_intersect = local_intersect[0]
-        y_intersect = local_intersect[1]
-        if closure == True:
-            update_crossroads(x_intersect, y_intersect, closure=True)
-        else:
-            update_crossroads(x_intersect, y_intersect)
+        # return [x0, y0, x, y]
+        strtag = splittag[1:5]
+        numtags = 4
+    # create empty array to store floats
+    floattag = [0] * numtags
+    # convert to float
+    for i in range(numtags):
+        floattag[i] = float(strtag[i])
+    return floattag
 
-#  Calculate gauss code, alexander polynomial, determinant, 2nd and 3rd degree vassiliev
-#  invariants and updates the label
-def find_gc(event):
+# extract all line information
+def extractlines(taglist):
+    # this will contain the mathematically defined lines
+    # [xbound, ybound, slope]
+    lines = []
+    for line in taglist:
+        linecoords = extracttaginfo(line)
+        lines.append(defineline(linecoords[0],linecoords[2],linecoords[1],linecoords[3]))
+    return lines
+
+# extract 3D coordinate information from tags
+def extractcoords():
+    # initialize a bridge counter
+    bridgeloc = []
+    numtags = len(nodetags)
+    coords=[[0,0,0]]*(numtags+2)
+    for c in range(numtags):
+        coords[c+1]=extracttaginfo(nodetags[c])
+        # check if the tag is a bridge
+        if coords[c+1][2] == bridgeheight:
+            #print("bridge detected!")
+            bridgeloc.append(c+1)
+    # iterate through array and insert bridge elements
+    for b in range(len(bridgeloc)):
+        bridgetag = extracttaginfo(bridgetags[b])
+        loc = bridgeloc[b]+(4*(b))
+        bridgestart= [bridgetag[0],bridgetag[2]]
+        bridgeend=[bridgetag[1],bridgetag[3]]
+        coords.insert(loc,[bridgestart[0],bridgestart[1],0])
+        coords.insert(loc+1,[bridgestart[0],bridgestart[1],bridgeheight])
+        coords.insert(loc+3,[bridgeend[0],bridgeend[1],bridgeheight])
+        coords.insert(loc+4,[bridgeend[0],bridgeend[1],0])
+    # add a bridge to first and last node so that closure goes below everything else
+    if numtags > 1:
+        # first copy first and last node
+        coords[0] = extracttaginfo(nodetags[0])
+        coords[-1] = extracttaginfo(nodetags[numtags-1])
+        # then change the z to a positive higher value
+        coords[0][2]=2.
+        coords[-1][2]=2.
+    return coords
+
+# check particular line for intersections against all other lines
+# takes in the array of lines produced in extractlines()
+def checklines(linearray, lineofinterest):
+    # this will contain intersection coordinates
+    # [xintersect, yintersect]
+    intersections = []
+    for line in linearray:
+        intersect = checkintersect(line[0],lineofinterest[0],line[1],lineofinterest[1],line[2],lineofinterest[2])
+        # we don't want a line to find intersections with itself
+        #if line == lineofinterest:
+        #    intersect = None
+        #else:
+            # otherwise we check for intersections with all other lines
+            # in the future we may want to implement a limit on which lines to check
+        #    intersect = checkintersect(line[0],lineofinterest[0],line[1],lineofinterest[1],line[2],lineofinterest[2])
+        # add an intersection if it exists
+        if intersect != None:
+            intersections.append(intersect)
+    return intersections
+
+# function to draw nodes
+def drawnode(x, y, z, radius, color, type="node", activecolor=nodecolor):
+    tag = type + "_" + str(x) + "_" + str(y) + "_" + str(z)
+    canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, activefill=activecolor, width=0, tags=tag)
+    nodetags.append(tag)
+
+def drawline(x0, y0, x, y, thickness, color, type="line", bridgeinfo = None):
+    # we need to make closuretag global to modify it here
+    global  closuretag
+    tag = type + "_" + str(x0) + "_" + str(x) + "_" + str(y0) + "_" + str(y)
+    canvas.create_line(x0, y0, x, y, fill = color, width = thickness, tags=tag)
+    if type == "line":
+        linetags.append(tag)
+        drawintersections(x0, y0, x, y)
+    elif type == "closure":
+        closuretag = tag
+#        drawintersections(x0, y0, x, y)
+    elif type == "bridgeline":
+        tag += "_node_"+str(bridgeinfo[0])+"_"+str(bridgeinfo[1])+"_"+str(bridgeinfo[2])
+        bridgetags.append(tag)
+
+# main drawing function
+def drawsegment(x,y):
+    # number of nodes
+    numnodes = len(nodetags)
+    # check if there is an initial node
+    if numnodes!=0:
+        # use use the coordinates of the previous node
+        previousnode = extracttaginfo(nodetags[-1])
+        drawline(previousnode[0],previousnode[1],x,y,linethickness,linecolor)
+
+        drawnode(x,y,0,noderadius,nodecolor)
+        # raise the nodes to the top of the canvas so they are drawn over the lines
+        canvas.tag_raise(nodetags[-1])
+        canvas.tag_raise(nodetags[numnodes-1])
+    # otherwise just draw the initial node
+    else:
+        drawnode(x,y,0,noderadius,nodecolor)
+
+def drawclosure():
+    # delete previous closure line if it exists
+    if closuretag != None:
+        canvas.delete(closuretag)
+    # check if there are at least three nodes so that a closure line is appropriate
+    if len(nodetags) > 2:
+        # find coordinates of first node
+        firstnode = extracttaginfo(nodetags[0])
+        lastnode = extracttaginfo(nodetags[-1])
+        drawline(firstnode[0],firstnode[1],lastnode[0],lastnode[1],linethickness,closurecolor,type="closure")
+
+def drawbridge(x,y,z,x0,y0,slope):
+    drawnode(x,y,z,noderadius,canvasbackground,type="bridge",activecolor=activenode)
+    bridge = definebridge(x,y,slope,x0,y0,noderadius,bridgeheight)
+    drawline(bridge[0][0],bridge[1][0],bridge[0][1],bridge[1][1],linethickness,linecolor,type="bridgeline",bridgeinfo=[x,y,z])
+
+def drawintersections(x0, y0, x, y, type="line"):
+    # define the line we are checking for intersections
+    drawnline = defineline(x0, y0, x, y)
+    # extract all other line data
+    lines=extractlines(linetags[:-2])
+    # check for intersections
+    intersections = checklines(lines, drawnline)
+#    if type == "line":
+#        color = linecolor
+#    elif type == "closure":
+#        color = closurecolor
+    intersectnumber = len(intersections)
+    orderedintersects = [0]*intersectnumber
+    # check which intersection should fall first
+    for i in range(intersectnumber):
+        # first closest
+        closestintersect = pythagdistance(x0,y0,intersections)
+        # append to ordered list
+        orderedintersects[i]=closestintersect
+        # delete from initial intersection list
+        del(intersections[intersections.index(closestintersect)])
+    
+    # draw a bridge for each intersection
+    for i in orderedintersects:
+        drawbridge(i[0],i[1],bridgeheight,x0,y0,drawnline[2])
+#### just for testing
+import numpy as np
+from pyknotid.spacecurves import Knot
+
+def canvasinteract(event):
+    global knot
+    global coordinates
+    # capture mouse location
+    x, y = event.x, event.y
+    # this is the size of the bounding box for determining intersections
+    # this also is the region in which you cannot draw another node conveniently
+    hbsize = 10
+    tags=[]
+    lines=[]
+    # this should contain four elements: bridge node, bridge line and two intersecting
+    # lines
+    points = canvas.find_overlapping(x-hbsize/2,y-hbsize/2,x+hbsize/2,y+hbsize/2)
+    for p in points:
+        # this returns a tuple so we only want the first element of each tag
+        # we only use one tag per item on this canvas
+        tags.append(canvas.gettags(p)[0])
+    # check if anything was enclosed
+    if len(tags) > 0:
+        for tag in tags:
+            print(tag)
+            splittag = extracttaginfo(tag)
+            if tag.split("_")[0]==("line"):
+                # x0,x,y0,y
+                lines.append(defineline(splittag[0],splittag[2],splittag[1],splittag[3]))
+            if tag.split("_")[0]==("bridge"):
+                # x,y,z
+                bridgenode = extracttaginfo(tag)
+            if tag.split("_")[0]==("bridgeline"):
+                # this is inefficient and could be remedied by fixing the tag order in
+                # drawline
+                for btag in bridgetags:
+                    if btag.startswith(tag):
+                        # x0,y0,x,y
+                        origbridgetag = extracttaginfo(btag)
+                        bridge =[[origbridgetag[0],origbridgetag[1]],[origbridgetag[2],origbridgetag[3]]]
+                        print('bridge')
+                        print(bridge)
+                        # tag location in array of bridge tags
+                        tagloc = bridgetags.index(btag)
+                        # remove previous bridge from canvas
+                        canvas.delete(tag)
+                        # the bridge line is deleted but its tag still exists
+                        # we still have a list of 4 elements
+                        # want to calculate the bridge about the node using the two
+                        # lines
+                        # we calculate both potential bridges manually
+                        # returns [[x0,x],[y0,y],z]
+                        bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[0][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)[:-1]
+                        bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)[:-1]
+                        print("lines")
+                        print(lines)
+                        print("bridge1")
+                        print(bridge1)
+                        print("bridge2")
+                        print(bridge2)
+                        # we want the new bridge, not a duplicate of the old one
+                        nodepart="_node_"+str(bridgenode[0])+"_"+str(bridgenode[1])+"_"+str(bridgenode[2])
+                        if bridge1 == bridge:
+                            newtag='bridgeline_'+str(bridge2[0][0])+"_"+str(bridge2[0][1])+"_"+str(bridge2[1][0])+"_"+str(bridge2[1][1])
+                            # draw bridge2
+                            canvas.create_line(bridge2[0][0], bridge2[1][0],bridge2[0][1], bridge2[1][1], fill = linecolor, width = linethickness, tags=newtag)
+                        elif bridge2 == bridge:
+                            newtag='bridgeline_'+str(bridge1[0][0])+"_"+str(bridge1[0][1])+"_"+str(bridge1[1][0])+"_"+str(bridge1[1][1])
+                            # draw bridge
+                            canvas.create_line(bridge1[0][0],bridge1[1][0],bridge1[0][1],bridge1[1][1],fill=linecolor,width=linethickness,tags=newtag)
+                        else:
+                            print("something went wrong")
+                        # replace the tag for the old bridge
+                        bridgetags[tagloc]=newtag+nodepart
+                        print("newbridge")
+                        print(bridgetags[tagloc])
+    elif len(tags) > 4:
+        print('Too many overlapping elements for program to distinguish')
+    # otherwise just draw a new line segment
+    else:
+        drawsegment(x,y)
+        drawclosure()
+        #print(ncoords)
+        #k = Knot(ncoords)
+        #k.plot(mode='matplotlib')
+        #print("bridges")
+        #print(bridgetags)
+    # convert in pyknotid knot object
+    coordinates = extractcoords()
+    coordarray = np.array(coordinates)
+    knot = Knot(coordarray)
+
+### ANALYSIS
+
+def findgausscode(event):
     global gc
     global k
-    if len(node_coords) > 1:
-        #  Convert to array
-        node_coords_array = np.asarray(node_coords)
-        k = pkidsc.Knot(node_coords_array)
-        gc = k.gauss_code()
+    if len(coordinates) > 1:
+        gc = knot.gauss_code()
         # simplify the gauss code
         gc.simplify()
-        g_code.config(text=str(gc))
+        # display gauss code
+        gcode.config(text=str(gc))
 
-#  Clear all data and objects on canvas
-def clear_canvas(event):
-    global x0, y0, node_coords, line_start_coords, line_end_coords, line_m
-    global line_b, intersect_coords, intersect_node_dict, knot_coords
-    global node_counter, line_counter, intersected_list
+def clearcanvas(event):
     draw.delete("all")
-    x0, y0 = 0, 0
-    node_coords.clear()
-    knot_coords.clear()
-    line_start_coords.clear()
-    line_end_coords.clear()
-    line_m.clear()
-    line_b.clear()
-    intersect_coords.clear()
-    intersect_node_dict.clear()
-    analysis_results.clear()
-    g_code.config(text="--")
-    clos_var.set(0)
-    node_counter = 0
-    line_counter = 0
-    intersect_stack_dict.clear()
-    tag_dict.clear()
-    intersect_crossroads.clear()
-    crossroad_start_end.clear()
-    closure_line_info.clear()
-    closure_intersects.clear()
-    intersected_list.clear()
+    nodetags=[] # x, y
+    bridgetags=[] # xbounds, ybounds, (z?)
+    linetags=[] # xbounds, ybounds, (slope?)
+    closuretag = None # xbounds, ybounds
 
-def display_coords_realtime(event):
-    x, y = event.x, event.y
-    coords = str(x) + ", " + str(y)
-    coords_realtime.config(text=coords)
+def displayrealtime(event):
+    x, y = event.x,event.y
+    coords = str(x)+", "+str(y)
+    coordsrealtime.config(text=coords)
 
-# create function to close program
-def close_window():
+def closewindow():
     window.destroy()
 
 # clear clipboard and copy the currently displayed gauss code
-def copy_gauss(event):
+def copygauss(event):
     root.clipboard_clear()
     root.clipboard_append(gc_str)
 
-# open file to save data
-def open_file(event):
+# open file to save data:
+def openfile(event):
     global numknots
     global fileopen
     # set number of entries to -1 initially so we don't count the header
     numknots = -1
-    root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("comma-separated values",".csv")])
+    root.filename = fd.askopenfilename(initialdir = "/", title = "Select file",filetypes=[("    comma-separated values",".csv")])
     filename.config(text=root.filename.split("/")[-1])
     fileopen = True
     # update numknots NEEDS TESTING
@@ -281,7 +468,7 @@ def open_file(event):
     entries.config(text=str(numknots)+" entries")
 
 # new file to save data to
-def new_file(event):
+def newfile(event):
     global numknots
     global fileopen
     # ask for new filename and location
@@ -297,7 +484,7 @@ def new_file(event):
     # set number of knots to 0
     numknots = 0
 
-def write_data(event):
+def writedata(event):
     global numknots
     if fileopen == True:
         # update number of knots
@@ -315,61 +502,59 @@ def write_data(event):
             writer.writerow([str(gc),len(gc),str(k.alexander_polynomial(variable=t))])
     else:
         mb.showerror("Error", "No active file. Open a file or start a new file to save data.")
-    
+
 def popuphelp(event):
     mb.showinfo("Help", "A wrapper which allows graphical input of knots to be analyzed with pyknotid.\nYou can open a previous csv file or start a new one and then draw your knot. The closure option doesn't change the analysis. It only affects the appearance. Upon saving (w), the knot coordinates are saved as a json file in a subfolder created by the program in the working directory. The analysis details are also appended to the csv. The canvas can be cleared (c) and the program can be closed easily (q).\nCreated by Xavier and Luc Capaldi and released with the MIT License (c) 2019. ")
 
 def popupmoo(event):
     mb.showwarning("Moo", "    -----------\n< whyknot >\n    -----------\n        \   ^__^\n         \  (oo)\_______\n            (__)\           )\/\ \n                  ||-----w |\n                  ||        ||")
 
-#  Create GUI
+# CAN USE activefill to show when switching
+# can also use canvas.config(cursor="exchange")
+
+### TKINTER ###
+
+# create main window
 root = tk.Tk()
 root.title("WhyKnot")
+root.geometry("1280x720")
 
-#  Create main frames within the root frame
-draw_frame = tk.Frame(root)
-interface_frame = tk.Frame(root, width=300, height=800)
+# create main frames within the root frame
+drawframe = tk.Frame(root, width=980, height=720)
+interfaceframe = tk.Frame(root, width=300, height=720)
 
-#  Set geometry manager class for main frames
-draw_frame.grid(column=0, row=0)
-interface_frame.grid(column=1, row=0)
-# interface_frame.grid_propagate(False)   #  widgets expand frame
+# set geometry manager class for main frames and organize within root frame
+drawframe.grid(column=0, row=0, sticky = "nsw")
+interfaceframe.grid(column=1, row=0, sticky = "nse")
 
-#  Organize main frames within the root frame
-draw_frame.grid(column=0, sticky="nsw")
-interface_frame.grid(column=1, sticky="nse")
+# create canvas widget for draw frame
+canvas = tk.Canvas(drawframe, bg=canvasbackground, cursor="cross", width=980, height=720)
 
-#  Create canvas widget for draw frame
-draw = tk.Canvas(draw_frame, width=600, height=800)
+# place widget in draw frame
+canvas.grid(row=0, column=0)
 
-#  Place widget in draw frame
-draw.grid(row=0, column=0)
+# create widgets for interface frame
+title = tk.Label(interfaceframe, text="WhyKnot", font=("Helvetica", 18))
 
-#  Create widgets for right (interface) frame
-title = tk.Label(interface_frame, text="WhyKnot", font=("Helvetica", 18))
+gcodevar = tk.StringVar() # button var so text can be updated
+gcodevar.set("--")
+gcode = tk.Label(interfaceframe,text="--",font=("Helvetica",15),wraplength=300)
 
-g_code_var = tk.StringVar()  #  Button var so text can be updated
-g_code_var.set("--")
-g_code = tk.Label(interface_frame, text="--", font=("Helvetica", 15), wraplength=300)
-
-clos_var = tk.IntVar()
-closures = tk.Checkbutton(interface_frame, text="Include closure", variable=clos_var)
-
-file = tk.Button(interface_frame, text="File")
-new = tk.Button(interface_frame, text="New")
-save = tk.Button(interface_frame, text="Save (w)")
-help = tk.Button(interface_frame, text="Help")
+file = tk.Button(interfaceframe, text="File")
+new = tk.Button(interfaceframe, text="New")
+save = tk.Button(interfaceframe, text="Save (w)")
+help = tk.Button(interfaceframe, text="Help")
 # results = tk.Label(interface_frame, text="Results Goes Here")
-close = tk.Button(interface_frame, text="Quit (q)")
-clear = tk.Button(interface_frame, text="Clear (c)")
-coords_realtime = tk.Label(interface_frame, text="--")
-filename = tk.Label(interface_frame, text="no file", font=("Helvetica",10))
-entries = tk.Label(interface_frame, text="0 entries", font=("Helvetica",10))
+close = tk.Button(interfaceframe, text="Quit (q)")
+clear = tk.Button(interfaceframe, text="Clear (c)")
+coordsrealtime = tk.Label(interfaceframe, text="--")
+filename = tk.Label(interfaceframe, text="no file", font=("Helvetica",10))
+entries = tk.Label(interfaceframe, text="0 entries", font=("Helvetica",10))
 
-#  Place widgets in interface frame
+# place widgets in interface frame
 title.grid(row=0, columnspan=2)
-g_code.grid(row=6, columnspan=2)
-closures.grid(row=5, columnspan=2)
+gcode.grid(row=6, columnspan=2)
+#closures.grid(row=5, columnspan=2)
 file.grid(row=1, column=0)
 new.grid(row=1, column=1)
 save.grid(row=2, column=0)
@@ -378,24 +563,26 @@ filename.grid(row=3, columnspan=2)
 entries.grid(row=4, columnspan=2)
 clear.grid(row=7, column=0)
 close.grid(row=7, column=1)
-coords_realtime.grid(row=9, columnspan=2)
+coordsrealtime.grid(row=9, columnspan=2)
 
-#  Initialize event handler
-draw.bind("<Button-1>", drawline, add="+")
-draw.bind("<Button-1>", find_gc, add="+")
-clear.bind("<Button-1>", clear_canvas)
-root.bind("c", clear_canvas)
+# event handlers
+canvas.bind("<Button-1>", canvasinteract, add="+")
+canvas.bind("<Button-1>", findgausscode, add="+")
+clear.bind("<Button-1>", clearcanvas)
+root.bind("c", clearcanvas)
 close.bind("<Button-1>", lambda e: root.destroy())
 root.bind("q", lambda e: root.destroy())
-closures.bind("<Button-1>", include_closures)
+#closures.bind("<Button-1>", include_closures)
 #closures.bind("<Button-1>", find_gc)
-draw.bind("<Motion>", display_coords_realtime)
-root.bind("y", copy_gauss)
-save.bind("<Button-1>", write_data)
+canvas.bind("<Motion>", displayrealtime)
+root.bind("y", copygauss)
+save.bind("<Button-1>", writedata)
 help.bind("<Button-1>", popuphelp)
-root.bind("w", write_data)
-file.bind("<Button-1>",open_file)
-new.bind("<Button-1>",new_file)
+root.bind("w", writedata)
+file.bind("<Button-1>",openfile)
+new.bind("<Button-1>",newfile)
 root.bind("m", popupmoo)
+#root.bind("p", threedplot)
 
+# begin progam main loop
 root.mainloop()
