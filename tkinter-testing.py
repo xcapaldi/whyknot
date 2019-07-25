@@ -108,13 +108,8 @@ def potentialintersection(xbound,ybound,linearray):
 def pythagdistance(x0,y0,points):
     # points should be an array of [x,y] coordinates
     distlist = []
-    print('points')
-    print(points)
     for p in points:
         distlist.append(np.sqrt((np.abs(x0)-np.abs(p[0]))**2+(np.abs(y0)-np.abs(p[1]))**2))
-    print('distlist')
-    print(distlist)
-    print(points[distlist.index(min(distlist))])
     return points[distlist.index(min(distlist))]
 
 # define bounds of bridge
@@ -134,12 +129,6 @@ def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
     # start drawing
     edge1 = [xintersect-x,yintersect-y]
     edge2 = [xintersect+x,yintersect+y]
-    #distedge1 = np.sqrt((np.abs(x0)-np.abs(edge1[0]))**2+(np.abs(y0)-np.abs(edge1[1]))**2)
-    #distedge2 = np.sqrt((np.abs(x0)-np.abs(edge2[0]))**2+(np.abs(y0)-np.abs(edge2[1]))**2)
-    #if distedge1 < distedge2:
-    #    bridge=[[xintersect-x,xintersect+x],[yintersect-y,yintersect+y],bridgeheight]
-    #else:
-    #    bridge=[[xintersect+x,xintersect-x],[yintersect+y,yintersect-y],bridgeheight]
     closeedge=pythagdistance(x0,y0,[edge1,edge2])
     if closeedge == edge1:
         bridge=[[edge1[0],edge2[0]],[edge1[1],edge2[1]],bridgeheight]
@@ -210,17 +199,6 @@ def extractcoords():
     for b in range(len(bridgeloc)):
         bridgetag = extracttaginfo(bridgetags[b])
         loc = bridgeloc[b]+(4*(b))
-        # need to determine which bridge falls first
-        # TODO this is still not working
-        #prevnode = coords[loc-1] #x,y,z
-        #distance1 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[0]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[2]))**2)
-        #distance2 = np.sqrt((np.abs(prevnode[0])-np.abs(bridgetag[1]))**2+(np.abs(prevnode[1])-np.abs(bridgetag[3]))**2)
-        #if distance1 < distance2:
-        #    bridgestart = [bridgetag[0],bridgetag[2]]
-        #    bridgeend = [bridgetag[1],bridgetag[3]]
-        #else:
-        #    bridgestart = [bridgetag[1],bridgetag[3]]
-        #    bridgeend = [bridgetag[0],bridgetag[2]]
         bridgestart= [bridgetag[0],bridgetag[2]]
         bridgeend=[bridgetag[1],bridgetag[3]]
         coords.insert(loc,[bridgestart[0],bridgestart[1],0])
@@ -262,10 +240,6 @@ def drawnode(x, y, z, radius, color, type="node", activecolor=nodecolor):
     tag = type + "_" + str(x) + "_" + str(y) + "_" + str(z)
     canvas.create_oval(x-radius, y-radius, x+radius, y+radius, fill=color, activefill=activecolor, width=0, tags=tag)
     nodetags.append(tag)
-#    if type == "node":
-#        nodetags.append(tag)
-#    elif type == "bridge":
-#        bridgetags.append(tag)
 
 def drawline(x0, y0, x, y, thickness, color, type="line", bridgeinfo = None):
     # we need to make closuretag global to modify it here
@@ -341,42 +315,82 @@ def drawintersections(x0, y0, x, y, type="line"):
     # draw a bridge for each intersection
     for i in orderedintersects:
         drawbridge(i[0],i[1],bridgeheight,x0,y0,drawnline[2])
-# just for testing
+#### just for testing
 import numpy as np
 from pyknotid.spacecurves import Knot
+'''
+def switchbridge(taglist):
+    # this function expects a list of four tags: bridge node, bridge line, and two
+    # intersecting lines
+    # check if there are too many tags
+    if len(taglist) > 4:
+        print('Too many overlapping elements for program to distinguish.')
+        return
+    for tag
+''' 
 
 def canvasinteract(event):
     # capture mouse location
     x, y = event.x, event.y
     # this is the size of the bounding box for determining intersections
-    hbsize = 20
-    points = canvas.find_enclosed(x-hbsize/2,y+hbsize/2,x+hbsize/2,y-hbsize/2)
-    tags = canvas.gettags(points)
+    # this also is the region in which you cannot draw another node conveniently
+    hbsize = 10
+    tags=[]
+    lines=[]
+    # this should contain four elements: bridge node, bridge line and two intersecting
+    # lines
+    points = canvas.find_overlapping(x-hbsize/2,y-hbsize/2,x+hbsize/2,y+hbsize/2)
+    for p in points:
+        # this returns a tuple so we only want the first element of each tag
+        # we only use one tag per item on this canvas
+        tags.append(canvas.gettags(p)[0])
     # check if anything was enclosed
     if len(tags) > 0:
         for tag in tags:
-            if tag.startswith("bridge"):
-                # bridge switch function here
-                # what happens if we have two close bridges?!
-                print("SWITCH BRIDGE")
-        
+            if tag.startwith("line"):
+                # x0,y0,x,y
+                lines.append(defineline(extracttaginfo(tag)))
+            if tag.startwith("bridge"):
+                # x,y,z
+                bridgenode = extractaginfo(tag)
+            if tag.startswith("bridgeline"):
+                # get bridge location in array
+                # this is inefficient and could be remedied by fixing the tag order in
+                # drawline
+                for btag in bridgetags:
+                    if btag.startswith(tag):
+                        bridge = btag
+                        tagloc = bridgetags.index(btag)
+                        print('tagloc' + str(tagloc))
+                        print('btag is ' + btag)
+                        # remove previous bridge from canvas
+                        canvas.delete(tag)
+                        # the bridge line is deleted but its tag still exists
+                        # we still have a list of 4 elements
+                        # want to calculate the bridge about the node using the two
+                        # lines
+                        # we calculate both potential bridges manually
+                        bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)
+                        bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)
+                        print("SWITCH BRIDGE")
+    elif len(tags) > 4:
+        print('Too many overlapping elements for program to distinguish')
     # otherwise just draw a new line segment
     else:
         drawsegment(x,y)
         drawclosure()
         coordinates = extractcoords()
         ncoords = np.array(coordinates)
-        print(ncoords)
+        #print(ncoords)
         k = Knot(ncoords)
-        k.plot(mode='matplotlib')
-        print("bridges")
-        print(bridgetags)
+        #k.plot(mode='matplotlib')
+        #print("bridges")
+        #print(bridgetags)
 
 
 # TODO TODO TODO
 
 
-#    drawsegment(x,y)
     
 # CAN USE activefill to show when switching
 # can also use canvas.config(cursor="exchange")
