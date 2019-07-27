@@ -334,6 +334,7 @@ from pyknotid.spacecurves import Knot
 def canvasinteract(event):
     global knot
     global coordinates
+    global coordarray
     # capture mouse location
     x, y = event.x, event.y
     # this is the size of the bounding box for determining intersections
@@ -359,6 +360,8 @@ def canvasinteract(event):
             if tag.split("_")[0]==("bridge"):
                 # x,y,z
                 bridgenode = extracttaginfo(tag)
+                nodeb = tag
+                bridgenodeposition = nodetags.index(tag)
             if tag.split("_")[0]==("bridgeline"):
                 # this is inefficient and could be remedied by fixing the tag order in
                 # drawline
@@ -367,8 +370,6 @@ def canvasinteract(event):
                         # x0,y0,x,y
                         origbridgetag = extracttaginfo(btag)
                         bridge =[[origbridgetag[0],origbridgetag[1]],[origbridgetag[2],origbridgetag[3]]]
-                        print('bridge')
-                        print(bridge)
                         # tag location in array of bridge tags
                         tagloc = bridgetags.index(btag)
                         # remove previous bridge from canvas
@@ -381,28 +382,35 @@ def canvasinteract(event):
                         # returns [[x0,x],[y0,y],z]
                         bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[0][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)[:-1]
                         bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)[:-1]
-                        print("lines")
-                        print(lines)
-                        print("bridge1")
-                        print(bridge1)
-                        print("bridge2")
-                        print(bridge2)
+                        # these are the potential initial nodes which we will need to
+                        # move the bridge node to
+                        node1 = "node_"+str(int(lines[0][0][0]))+"_"+str(int(lines[0][1][0]))+"_"+"0"
+                        node2 = "node_"+str(int(lines[1][0][0]))+"_"+str(int(lines[1][1][0]))+"_"+"0"
                         # we want the new bridge, not a duplicate of the old one
                         nodepart="_node_"+str(bridgenode[0])+"_"+str(bridgenode[1])+"_"+str(bridgenode[2])
                         if bridge1 == bridge:
                             newtag='bridgeline_'+str(bridge2[0][0])+"_"+str(bridge2[0][1])+"_"+str(bridge2[1][0])+"_"+str(bridge2[1][1])
                             # draw bridge2
                             canvas.create_line(bridge2[0][0], bridge2[1][0],bridge2[0][1], bridge2[1][1], fill = linecolor, width = linethickness, tags=newtag)
+                            # find the related node
+                            index = nodetags.index(node2)
+                            # delete old bridge node
+                            del(nodetags[bridgenodeposition])
+                            # insert new bridge node
+                            nodetags.insert(index+1,nodeb)
                         elif bridge2 == bridge:
                             newtag='bridgeline_'+str(bridge1[0][0])+"_"+str(bridge1[0][1])+"_"+str(bridge1[1][0])+"_"+str(bridge1[1][1])
+                            index = nodetags.index(node1)
+                            # delete old bridge node
+                            del(nodetags[bridgenodeposition])
+                            # insert new bridge node
+                            nodetags.insert(index+1,nodeb)
                             # draw bridge
                             canvas.create_line(bridge1[0][0],bridge1[1][0],bridge1[0][1],bridge1[1][1],fill=linecolor,width=linethickness,tags=newtag)
                         else:
                             print("something went wrong")
                         # replace the tag for the old bridge
                         bridgetags[tagloc]=newtag+nodepart
-                        print("newbridge")
-                        print(bridgetags[tagloc])
     elif len(tags) > 4:
         print('Too many overlapping elements for program to distinguish')
     # otherwise just draw a new line segment
@@ -418,6 +426,8 @@ def canvasinteract(event):
     coordinates = extractcoords()
     coordarray = np.array(coordinates)
     knot = Knot(coordarray)
+    print(nodetags)
+    
 
 ### ANALYSIS
 
@@ -436,7 +446,10 @@ def clearcanvas(event):
     nodetags=[] # x, y
     bridgetags=[] # xbounds, ybounds, (z?)
     linetags=[] # xbounds, ybounds, (slope?)
+    coordinates = []
+    coordarray = []
     closuretag = None # xbounds, ybounds
+    knot = None
 
 def displayrealtime(event):
     x, y = event.x,event.y
@@ -582,7 +595,6 @@ root.bind("w", writedata)
 file.bind("<Button-1>",openfile)
 new.bind("<Button-1>",newfile)
 root.bind("m", popupmoo)
-#root.bind("p", threedplot)
-
+root.bind("p", lambda e: knot.plot(mode='matplotlib'))
 # begin progam main loop
 root.mainloop()
