@@ -4,6 +4,7 @@ import tkinter.messagebox as mb
 import numpy as np
 import pyknotid
 import pyknotid.spacecurves as pkidsc
+from pyknotid.spacecurves import Knot
 import sympy
 import csv
 import os
@@ -123,6 +124,10 @@ def pythagdistance(x0,y0,points):
     for p in points:
         distlist.append(np.sqrt((np.abs(x0)-np.abs(p[0]))**2+(np.abs(y0)-np.abs(p[1]))**2))
     return points[distlist.index(min(distlist))]
+
+def pythag(x0,y0,x,y):
+    distance = np.sqrt((np.abs(x0)-np.abs(x))**2+(np.abs(y0)-np.abs(y))**2)
+    return distance
 
 # define bounds of bridge
 def definebridge(xintersect,yintersect,slope,x0,y0,radius,bridgeheight):
@@ -327,14 +332,12 @@ def drawintersections(x0, y0, x, y, type="line"):
     # draw a bridge for each intersection
     for i in orderedintersects:
         drawbridge(i[0],i[1],bridgeheight,x0,y0,drawnline[2])
-#### just for testing
-import numpy as np
-from pyknotid.spacecurves import Knot
 
 def canvasinteract(event):
     global knot
     global coordinates
     global coordarray
+
     # capture mouse location
     x, y = event.x, event.y
     # this is the size of the bounding box for determining intersections
@@ -352,7 +355,6 @@ def canvasinteract(event):
     # check if anything was enclosed
     if len(tags) > 0:
         for tag in tags:
-            print(tag)
             splittag = extracttaginfo(tag)
             if tag.split("_")[0]==("line"):
                 # x0,x,y0,y
@@ -383,9 +385,33 @@ def canvasinteract(event):
                         bridge1 = definebridge(bridgenode[0],bridgenode[1],lines[0][2],lines[0][0][0],lines[0][1][0],noderadius,bridgeheight)[:-1]
                         bridge2 = definebridge(bridgenode[0],bridgenode[1],lines[1][2],lines[1][0][0],lines[1][1][0],noderadius,bridgeheight)[:-1]
                         # these are the potential initial nodes which we will need to
-                        # move the bridge node to
-                        node1 = "node_"+str(int(lines[0][0][0]))+"_"+str(int(lines[0][1][0]))+"_"+"0"
-                        node2 = "node_"+str(int(lines[1][0][0]))+"_"+str(int(lines[1][1][0]))+"_"+"0"
+                        # find start and end of the two intersection lines
+                        node1= "node_"+str(int(lines[0][0][0]))+"_"+str(int(lines[0][1][0]))+"_"+"0"
+                        node2= "node_"+str(int(lines[1][0][0]))+"_"+str(int(lines[1][1][0]))+"_"+"0"
+                        # delete old bridge node
+                        del(nodetags[bridgenodeposition])
+                        # find the array position of each of these
+                        node1loc = nodetags.index(node1)
+                        node2loc = nodetags.index(node2)
+                        # iterate through bridges after line starts
+                        bridgedist1 = pythag(lines[0][0][0],lines[0][1][0],bridgenode[0],bridgenode[1])
+                        n=1
+                        while nodetags[node1loc+n].split("_")[0]=="bridge":
+                            otherbridgedist = pythag(lines[0][0][0],lines[0][1][0],float(nodetags[node1loc+n].split("_")[1]),float(nodetags[node1loc+n].split("_")[2]))
+                            if otherbridgedist > bridgedist1:
+                                break
+                            if nodetags[node1loc+n].split("_")[0]!="bridge":
+                                break
+                            n+=1
+                        bridgedist2 = pythag(lines[1][0][0],lines[1][1][0],bridgenode[0],bridgenode[1])
+                        m=1
+                        while nodetags[node2loc+m].split("_")[0]=="bridge":
+                            otherbridgedist = pythag(lines[1][0][0],lines[1][1][0],float(nodetags[node2loc+m].split("_")[1]),float(nodetags[node2loc+m].split("_")[2]))
+                            if otherbridgedist > bridgedist2:
+                                break
+                            if nodetags[node2loc+m].split("_")[0]!="bridge":
+                                break
+                            m+=1
                         # we want the new bridge, not a duplicate of the old one
                         nodepart="_node_"+str(bridgenode[0])+"_"+str(bridgenode[1])+"_"+str(bridgenode[2])
                         if bridge1 == bridge:
@@ -393,20 +419,23 @@ def canvasinteract(event):
                             # draw bridge2
                             canvas.create_line(bridge2[0][0], bridge2[1][0],bridge2[0][1], bridge2[1][1], fill = linecolor, width = linethickness, tags=newtag)
                             # find the related node
-                            index = nodetags.index(node2)
+                            #index = nodetags.index(node2)
                             # delete old bridge node
-                            del(nodetags[bridgenodeposition])
+                            #del(nodetags[bridgenodeposition])
+                            # find related node
+                            #index = nodetags.index(node2)
                             # insert new bridge node
-                            nodetags.insert(index+1,nodeb)
+                            nodetags.insert(node2loc+m,nodeb)
                         elif bridge2 == bridge:
                             newtag='bridgeline_'+str(bridge1[0][0])+"_"+str(bridge1[0][1])+"_"+str(bridge1[1][0])+"_"+str(bridge1[1][1])
-                            index = nodetags.index(node1)
+                            #index = nodetags.index(node1)
                             # delete old bridge node
-                            del(nodetags[bridgenodeposition])
+                            #del(nodetags[bridgenodeposition])
+                            #index=nodetags.index(node1)
                             # insert new bridge node
-                            nodetags.insert(index+1,nodeb)
                             # draw bridge
                             canvas.create_line(bridge1[0][0],bridge1[1][0],bridge1[0][1],bridge1[1][1],fill=linecolor,width=linethickness,tags=newtag)
+                            nodetags.insert(node1loc+n,nodeb)
                         else:
                             print("something went wrong")
                         # replace the tag for the old bridge
@@ -426,11 +455,8 @@ def canvasinteract(event):
     coordinates = extractcoords()
     coordarray = np.array(coordinates)
     knot = Knot(coordarray)
-    print(nodetags)
-    
 
 ### ANALYSIS
-
 def findgausscode(event):
     global gc
     global k
@@ -442,6 +468,7 @@ def findgausscode(event):
         gcode.config(text=str(gc))
 
 def clearcanvas(event):
+    global nodetags, bridgetags, linetags, coordinates, coordarray, closuretag, knot
     canvas.delete("all")
     nodetags=[] # x, y
     bridgetags=[] # xbounds, ybounds, (z?)
@@ -596,5 +623,8 @@ file.bind("<Button-1>",openfile)
 new.bind("<Button-1>",newfile)
 root.bind("m", popupmoo)
 root.bind("p", lambda e: knot.plot(mode='matplotlib'))
+root.bind("d", lambda e: print(nodetags))
+root.bind("e", lambda e: print(coordarray))
+root.bind("t", lambda e: print(coordinates))
 # begin progam main loop
 root.mainloop()
