@@ -23,11 +23,11 @@ The analysis is stored in a CSV file and the raw knot coordinates are stored in 
 
 Main interface:
 
-<img src="https://github.com/xcapaldi/whyknot/screenshot_01.png" width="480">
+<img src="screenshot_01.png" width="480">
 
 3D plotting for checking if you've drawn knot properly:
 
-<img src="https://github.com/xcapaldi/whyknot/screenshot_02.png" width="480">
+<img src="screenshot_02.png" width="480">
 
 # Notes on use
 
@@ -51,17 +51,21 @@ If you have any experience, let us know so we can update this document for other
 ## Usage
 
 Assuming you have successfully installed all dependencies, you can start Whyknot with python3 whyknot.py
+
 You can either make a new file to store knot data with New or open a previous file with File.
 In either case, the main file stores the initial pyknotid analysis in CSV format.
 In addition, whyknot should generate a folder in the same directory which will contain individual JSON files containing the coordinates of each knot.
+
 You can click on the canvas area to draw nodes which will automatically be connected.
 You will notice that a purple closure line is automatically drawn.
 In our code, the closure line is always drawn above everything else (in the z-axis).
 Because of this, we recommend you finish drawing your knot such that the closure line doesn't intersect with anything.
 This makes it easier for you to ensure you've drawn the correct knot.
+
 Whenever normal lines intersect, an indicator is drawn to show which line is above or below the other.
 You can click on that intersection to switch the top line with the bottom.
 On the right, you will see a simplified Gauss code displayed if your knot is not an unknot (phew).
+
 You can save your knot to the active file with Save or by pressing w.
 Before saving you check if the 3D structure is correct by pressing p (for plot).
 It may look strange to you but this is actually an accurate representation of the knot data and the analysis can handle all these weird bridges correctly.
