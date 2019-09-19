@@ -23,11 +23,11 @@ The analysis is stored in a CSV file and the raw knot coordinates are stored in 
 
 Main interface:
 
-<img src="screenshot_01.png" width="480">
+<img src="screenshot_01.png" width="720">
 
 3D plotting for checking if you've drawn knot properly:
 
-<img src="screenshot_02.png" width="480">
+<img src="screenshot_02.png" width="720">
 
 # Notes on use
 
