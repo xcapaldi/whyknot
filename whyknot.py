@@ -774,6 +774,22 @@ def writedata(event):
         )
 
 
+def addunknot(event):
+    global numknots
+    if fileopen == True:
+        # update number of knots
+        numknots = numknots + 1
+        entries.config(text=str(numknots) + " entries")
+        # write knot analysis to csv
+        with open(root.filename, "a") as f:
+            writer = csv.writer(f)
+            writer.writerow(["nil", 0, "nil"])
+    else:
+        mb.showerror(
+            "Error", "No active file. Open a file or start a new file to save data."
+        )
+
+
 def popuphelp(event):
     mb.showinfo(
         "Help",
@@ -824,6 +840,7 @@ gcode = tk.Label(interfaceframe, text="--", font=("Helvetica", 15), wraplength=3
 file = tk.Button(interfaceframe, text="File")
 new = tk.Button(interfaceframe, text="New")
 save = tk.Button(interfaceframe, text="Save (w)")
+unknot = tk.Button(interfaceframe, text="Unknot (u)")
 help = tk.Button(interfaceframe, text="Help")
 # results = tk.Label(interface_frame, text="Results Goes Here")
 close = tk.Button(interfaceframe, text="Quit (q)")
@@ -833,18 +850,19 @@ filename = tk.Label(interfaceframe, text="no file", font=("Helvetica", 10))
 entries = tk.Label(interfaceframe, text="0 entries", font=("Helvetica", 10))
 
 # place widgets in interface frame
-title.grid(row=0, columnspan=2)
-gcode.grid(row=6, columnspan=2)
+title.grid(row=1, columnspan=2)
+gcode.grid(row=7, columnspan=2)
 # closures.grid(row=5, columnspan=2)
-file.grid(row=1, column=0)
-new.grid(row=1, column=1)
-save.grid(row=2, column=0)
-help.grid(row=2, column=1)
-filename.grid(row=3, columnspan=2)
-entries.grid(row=4, columnspan=2)
-clear.grid(row=7, column=0)
-close.grid(row=7, column=1)
-coordsrealtime.grid(row=9, columnspan=2)
+file.grid(row=2, column=0)
+new.grid(row=2, column=1)
+save.grid(row=3, column=0)
+unknot.grid(row=3, column=1)
+help.grid(row=10, columnspan=2)
+filename.grid(row=4, columnspan=2)
+entries.grid(row=5, columnspan=2)
+clear.grid(row=8, column=0)
+close.grid(row=8, column=1)
+coordsrealtime.grid(row=11, columnspan=2)
 
 # event handlers
 canvas.bind("<Button-1>", canvasinteract, add="+")
@@ -858,8 +876,10 @@ root.bind("q", lambda e: root.destroy())
 canvas.bind("<Motion>", displayrealtime)
 root.bind("y", copygauss)
 save.bind("<Button-1>", writedata)
+unknot.bind("<Button-1>", addunknot)
 help.bind("<Button-1>", popuphelp)
 root.bind("w", writedata)
+root.bind("u", addunknot)
 file.bind("<Button-1>", openfile)
 new.bind("<Button-1>", newfile)
 root.bind("m", popupmoo)
