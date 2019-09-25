@@ -748,6 +748,7 @@ def newfile(event):
     fileopen = True
     # set number of knots to 0
     numknots = 0
+    entries.config(text=str(numknots) + " entries")
 
 
 def writedata(event):
