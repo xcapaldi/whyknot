@@ -79,6 +79,24 @@ After saving some knots, you will find your CSV file contains three elements per
 
 These are all generated using the coordinates you drew passed through the analytic functions packaged in pyknotid.
 
+## Known bugs
+
+### No bridge
+
+Occasionally no bridge will be placed at a junction as can be seen in the figure below.
+The reason for this is still unknown.
+Redrawing the knot usually results in the correct format.
+
+<img src="bug_01.png" width="720">
+
+### Knot identified as unknot
+
+Sometimes a known knot is identified as an unknot like in the figure below.
+This is remedied by redrawing the knot.
+The pyknotid backend will usually identify successfully on the second attempt.
+
+<img src="bug_02.png" width="720">
+
 ## Contributor guidelines
 
 Try to follow PEP8 guidelines as much as possible (except that black line length defaults are used; 88 chars).
