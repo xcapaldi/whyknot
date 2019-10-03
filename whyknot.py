@@ -790,6 +790,20 @@ def addunknot(event):
             "Error", "No active file. Open a file or start a new file to save data."
         )
 
+def addcomplex(event):
+    global numknots
+    if fileopen == True:
+        # update number of knots
+        numknots = numknots + 1
+        entries.config(text=str(numknots) + " entries")
+        # write knot analysis to csv
+        with open(root.filename, "a") as f:
+            writer = csv.writer(f)
+            writer.writerow(["complex", 99, "complex"])
+    else:
+        mb.showerror(
+            "Error", "No active file. Open a file or start a new file to save data."
+        )
 
 def popuphelp(event):
     mb.showinfo(
@@ -842,6 +856,7 @@ file = tk.Button(interfaceframe, text="File")
 new = tk.Button(interfaceframe, text="New")
 save = tk.Button(interfaceframe, text="Save (w)")
 unknot = tk.Button(interfaceframe, text="Unknot (u)")
+complexknot = tk.Button(interfaceframe, text="Too Complex (t)")
 help = tk.Button(interfaceframe, text="Help")
 # results = tk.Label(interface_frame, text="Results Goes Here")
 close = tk.Button(interfaceframe, text="Quit (q)")
@@ -858,12 +873,13 @@ file.grid(row=2, column=0)
 new.grid(row=2, column=1)
 save.grid(row=3, column=0)
 unknot.grid(row=3, column=1)
+complexknot.grid(row=4, columnspan=2)
 help.grid(row=10, columnspan=2)
-filename.grid(row=4, columnspan=2)
-entries.grid(row=5, columnspan=2)
-clear.grid(row=8, column=0)
-close.grid(row=8, column=1)
-coordsrealtime.grid(row=11, columnspan=2)
+filename.grid(row=5, columnspan=2)
+entries.grid(row=6, columnspan=2)
+clear.grid(row=9, column=0)
+close.grid(row=9, column=1)
+coordsrealtime.grid(row=12, columnspan=2)
 
 # event handlers
 canvas.bind("<Button-1>", canvasinteract, add="+")
@@ -878,15 +894,14 @@ canvas.bind("<Motion>", displayrealtime)
 root.bind("y", copygauss)
 save.bind("<Button-1>", writedata)
 unknot.bind("<Button-1>", addunknot)
+complexknot.bind("<Button-1>", addcomplex)
 help.bind("<Button-1>", popuphelp)
 root.bind("w", writedata)
 root.bind("u", addunknot)
+root.bind("t", addcomplex)
 file.bind("<Button-1>", openfile)
 new.bind("<Button-1>", newfile)
 root.bind("m", popupmoo)
 root.bind("p", lambda e: knot.plot(mode="matplotlib"))
-root.bind("d", lambda e: print(nodetags))
-root.bind("e", lambda e: print(coordarray))
-root.bind("t", lambda e: print(coordinates))
 # begin progam main loop
 root.mainloop()
