@@ -828,6 +828,8 @@ def popupmoo(event):
 root = tk.Tk()
 root.title("WhyKnot")
 root.geometry("1280x720")
+root.wait_visibility(root)
+root.wm_attributes('-alpha',1.0)
 
 # create main frames within the root frame
 drawframe = tk.Frame(root, width=980, height=720)
@@ -888,6 +890,8 @@ clear.bind("<Button-1>", clearcanvas)
 root.bind("c", clearcanvas)
 close.bind("<Button-1>", lambda e: root.destroy())
 root.bind("q", lambda e: root.destroy())
+root.bind("a", lambda e: root.wm_attributes('-alpha', 0.5))
+root.bind("s", lambda e: root.wm_attributes('-alpha', 1.0))
 # closures.bind("<Button-1>", include_closures)
 # closures.bind("<Button-1>", find_gc)
 canvas.bind("<Motion>", displayrealtime)
