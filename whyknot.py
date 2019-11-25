@@ -181,7 +181,8 @@ linetags = []  # xbounds, ybounds, (slope?)
 closuretag = None  # xbounds, ybounds
 
 # graphical variables
-canvasbackground = "#d9d9d9"
+#canvasbackground = "#d9d9d9"
+canvasbackground = "#ffffff"
 noderadius = 5
 nodecolor = "#ce0000"
 linethickness = 2
@@ -774,6 +775,37 @@ def writedata(event):
             "Error", "No active file. Open a file or start a new file to save data."
         )
 
+#def editdata(event):
+#    global numknots
+#    if fileopen == True:
+#        # check if there is at least one knot
+#        if numknots == 0:
+#            mb.showerror(
+#                "Error","This file has no knots to edit."
+#            )
+#        else:
+#            # check if json data for old knot exists
+#            jsonpath = root.filename[:-4] + "_json/" + str(modknot) + ".json")
+#            if os.path.exists(jsonpath):
+#                # delete old json file
+#            else:
+#                # save knot coordinate data to json file
+#                knot.to_json(jsonpath + "/" + str(modknot) + ".json")
+#            
+#            # update knot analysis in csv
+#            with open(root.filename, "a") as f:
+#                writer = csv.writer(f)
+#                write.writerow(
+#                    [str(gc), len(gc), str(knot.alexander_polynomial(variable=t))]
+#                )
+#    else:
+#        mb.showerror(
+#            "Error", "No active file. Open a file that you want to edit."
+#        )
+
+def editknot(event):
+    print(modknot.get())
+    return
 
 def addunknot(event):
     global numknots
@@ -866,6 +898,8 @@ clear = tk.Button(interfaceframe, text="Clear (c)")
 coordsrealtime = tk.Label(interfaceframe, text="--")
 filename = tk.Label(interfaceframe, text="no file", font=("Helvetica", 10))
 entries = tk.Label(interfaceframe, text="0 entries", font=("Helvetica", 10))
+modknot = tk.Entry(interfaceframe)
+edit = tk.Button(interfaceframe, text="Edit")
 
 # place widgets in interface frame
 title.grid(row=1, columnspan=2)
@@ -881,7 +915,9 @@ filename.grid(row=5, columnspan=2)
 entries.grid(row=6, columnspan=2)
 clear.grid(row=9, column=0)
 close.grid(row=9, column=1)
-coordsrealtime.grid(row=12, columnspan=2)
+modknot.grid(row=11, column=0)
+edit.grid(row=11, column=1)
+coordsrealtime.grid(row=13, columnspan=2)
 
 # event handlers
 canvas.bind("<Button-1>", canvasinteract, add="+")
@@ -901,6 +937,7 @@ unknot.bind("<Button-1>", addunknot)
 complexknot.bind("<Button-1>", addcomplex)
 help.bind("<Button-1>", popuphelp)
 root.bind("w", writedata)
+edit.bind("<Button-1>", editknot)
 root.bind("u", addunknot)
 root.bind("t", addcomplex)
 file.bind("<Button-1>", openfile)
