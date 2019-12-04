@@ -775,37 +775,60 @@ def writedata(event):
             "Error", "No active file. Open a file or start a new file to save data."
         )
 
-#def editdata(event):
-#    global numknots
-#    if fileopen == True:
-#        # check if there is at least one knot
-#        if numknots == 0:
-#            mb.showerror(
-#                "Error","This file has no knots to edit."
-#            )
-#        else:
-#            # check if json data for old knot exists
-#            jsonpath = root.filename[:-4] + "_json/" + str(modknot) + ".json")
-#            if os.path.exists(jsonpath):
-#                # delete old json file
-#            else:
-#                # save knot coordinate data to json file
-#                knot.to_json(jsonpath + "/" + str(modknot) + ".json")
-#            
-#            # update knot analysis in csv
-#            with open(root.filename, "a") as f:
-#                writer = csv.writer(f)
-#                write.writerow(
-#                    [str(gc), len(gc), str(knot.alexander_polynomial(variable=t))]
-#                )
-#    else:
-#        mb.showerror(
-#            "Error", "No active file. Open a file that you want to edit."
-#        )
-
-def editknot(event):
-    print(modknot.get())
-    return
+def editdata(event):
+    global numknots
+    if fileopen == True:
+        # check if there is at least one knot
+        if numknots == 0:
+            mb.showerror(
+                "Error","This file has no knots to edit."
+            )
+        else:
+            # check if the knot listed in edit field exists
+            mknot = modknot.get()
+            if int(mknot) > numknots:
+                mb.showerror(
+                    "Error","You are trying to edit a knot that does not exist."
+                )
+            else:
+                # check if json data for old knot exists
+                jsonpath = root.filename[:-4] + "_json/" + mknot + ".json"
+                if os.path.exists(jsonpath):
+                    # delete old json file
+                    os.remove(jsonpath)
+                    knot.to_json(jsonpath)
+                else:
+                    # save knot coordinate data to json file
+                    knot.to_json(jsonpath)
+                # update knot analysis in csv
+                # read current file
+                with open(root.filename, "r") as f:
+                    knotreader = csv.reader(f)
+                    rows = []
+                    for row in knotreader:
+                        rows.append(row)
+                # remove original file
+                os.remove(root.filename)
+                # recreate file to reload knots
+                with open(root.filename, "a") as f:
+                    knotwriter = csv.writer(f)
+                    nrow = 0
+                    for row in rows:
+                        nrow += 1
+                        # check if this is the knot we want to modify and modify it
+                        if nrow == int(mknot) + 1:
+                            knotwriter.writerow(
+                                [str(gc), len(gc), str(knot.alexander_polynomial(variable=t))]
+                            )
+                        else:
+                            # otherwise just write normal knot
+                            knotwriter.writerow(row)
+                # delete value in entry field 
+                modknot.delete(0,'end')
+    else:
+        mb.showerror(
+            "Error", "No active file. Open a file that you want to edit."
+        )
 
 def addunknot(event):
     global numknots
@@ -910,13 +933,13 @@ new.grid(row=2, column=1)
 save.grid(row=3, column=0)
 unknot.grid(row=3, column=1)
 complexknot.grid(row=4, columnspan=2)
-help.grid(row=10, columnspan=2)
+help.grid(row=11, columnspan=2)
 filename.grid(row=5, columnspan=2)
 entries.grid(row=6, columnspan=2)
 clear.grid(row=9, column=0)
 close.grid(row=9, column=1)
-modknot.grid(row=11, column=0)
-edit.grid(row=11, column=1)
+modknot.grid(row=10, column=0)
+edit.grid(row=10, column=1)
 coordsrealtime.grid(row=13, columnspan=2)
 
 # event handlers
@@ -937,7 +960,7 @@ unknot.bind("<Button-1>", addunknot)
 complexknot.bind("<Button-1>", addcomplex)
 help.bind("<Button-1>", popuphelp)
 root.bind("w", writedata)
-edit.bind("<Button-1>", editknot)
+edit.bind("<Button-1>", editdata)
 root.bind("u", addunknot)
 root.bind("t", addcomplex)
 file.bind("<Button-1>", openfile)
