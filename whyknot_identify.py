@@ -53,7 +53,7 @@ def checkrange(xbound1, xbound2, ybound1, ybound2, intersect):
     else:
         return False
 
-# TODO
+
 # check if two lines intersect
 def checkintersect(xbound1, xbound2, ybound1, ybound2, slope1, slope2):
     # check if line 1 is vertical
@@ -676,9 +676,9 @@ def findgausscode(event):
     global gc
     #    global k
     if len(coordinates) > 1:
-        gc = knot.gauss_code()
+        gc = knot.identify()
         # simplify the gauss code
-        gc.simplify()
+        #gc.simplify()
         # display gauss code
         gcode.config(text=str(gc))
 
@@ -944,9 +944,9 @@ coordsrealtime.grid(row=13, columnspan=2)
 
 # event handlers
 canvas.bind("<Button-1>", canvasinteract, add="+")
+canvas.bind("<Button-1>", findgausscode, add="+")
 clear.bind("<Button-1>", clearcanvas)
-root.bind("c", findgausscode)
-root.bind("C", clearcanvas)
+root.bind("c", clearcanvas)
 close.bind("<Button-1>", lambda e: root.destroy())
 root.bind("q", lambda e: root.destroy())
 root.bind("a", lambda e: root.wm_attributes('-alpha', 0.5))
