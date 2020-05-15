@@ -27,10 +27,10 @@ bibtex format:
 
 ```bibtex
 @Misc{whyknot,
-  author =    {Xavier Capaldi and Luc Capaldi},
-  title =     {pyknotid knot identification toolkit},
+  author = {Xavier Capaldi and Luc Capaldi},
+  title = {pyknotid knot identification toolkit},
   howpublished = {\url{https://github.com/xcapaldi/whyknot}},
-  note =      {Accessed YYYY-MM-DD},
+  note = {Accessed YYYY-MM-DD},
   year = 2019,
 }
 ```
