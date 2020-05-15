@@ -19,6 +19,22 @@ Whyknot provides a canvas upon which to draw 2D representations of 3D knots.
 Those knot are automatically analyzed by a pyknotid backend.
 The analysis is stored in a CSV file and the raw knot coordinates are stored in a json file.
 
+If you use this project in your own research, please cite us (as well as pyknotid):
+
+**Xavier Capaldi and Luc Capaldi. whyknot tkinter-based interface to pyknotid. https://github.com/xcapaldi/whyknot, 2019. Accessed YYYY-MM-DD.**
+
+bibtex format:
+
+```bibtex
+@Misc{whyknot,
+  author =    {Xavier Capaldi and Luc Capaldi},
+  title =     {pyknotid knot identification toolkit},
+  howpublished = {\url{https://github.com/xcapaldi/whyknot}},
+  note =      {Accessed YYYY-MM-DD},
+  year = 2019,
+}
+```
+
 # Screenshots
 
 Main interface:
