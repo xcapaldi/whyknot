@@ -35,6 +35,8 @@ bibtex format:
 }
 ```
 
+Also check out Kyle Miller's [KnotFolio](https://github.com/kmill/knotfolio) which has similar functionality and can import images.
+
 # Screenshots
 
 Main interface:
