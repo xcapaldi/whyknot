@@ -35,6 +35,8 @@ bibtex format:
 }
 ```
 
+This project has been used in a published work: [Time-dependent knotting of agitated chains](https://journals.aps.org/pre/abstract/10.1103/PhysRevE.103.032501)
+
 Also check out Kyle Miller's [KnotFolio](https://github.com/kmill/knotfolio) which has similar functionality and can import images.
 
 # Screenshots
