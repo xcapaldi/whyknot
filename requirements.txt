@@ -13,7 +13,7 @@ kiwisolver==1.1.0
 matplotlib==3.1.1
 mpmath==1.1.0
 networkx==2.3
-numpy==1.16.4
+numpy==1.22.0
 peewee==3.9.6
 planarity==0.4.1
 pyknotid==0.5.3
