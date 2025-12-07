@@ -19,7 +19,7 @@ planarity==0.4.1
 pyknotid==0.5.3
 pyparsing==2.4.2
 python-dateutil==2.8.0
-requests==2.22.0
+requests==2.32.4
 six==1.12.0
 sympy==1.4
 toml==0.10.0
